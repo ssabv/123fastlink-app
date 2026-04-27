@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 背景圆 -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M0,0h108v108h-108z"/>
+    <!-- 火箭/闪电图标 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,24L66,50L54,44L62,84L54,60L42,84L50,44L38,50Z"/>
+</vector>

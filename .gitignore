@@ -1,0 +1,25 @@
+# Gradle
+android/.gradle/
+android/app/build/
+android/build/
+android/captures/
+*.apk
+*.aab
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# OS
+.DS_Store
+Thumbs.db
+._*
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.local.properties

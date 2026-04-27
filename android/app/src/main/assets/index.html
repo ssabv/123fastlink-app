@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>123秒传</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --primary: #4CAF50;
+      --primary-dark: #388E3C;
+      --bg: #F0F2F5;
+      --card: #FFFFFF;
+      --text: #1A1A2E;
+      --sub: #666;
+      --border: #E8E8E8;
+      --danger: #E74C3C;
+      --radius: 14px;
+      --shadow: 0 2px 16px rgba(0,0,0,0.08);
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+    /* ===== 页面切换 ===== */
+    .page { display: none; position: fixed; inset: 0; overflow-y: auto; }
+    .page.active { display: flex; flex-direction: column; }
+    /* ===== 通用卡片 ===== */
+    .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); margin: 14px; padding: 20px; }
+    /* ===== 按钮 ===== */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 13px 20px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+    .btn-sm { padding: 9px 14px; font-size: 13px; }
+    .btn-full { width: 100%; }
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+    .btn-row .btn { flex: 1; }
+    /* ===== 输入框 ===== */
+    .input-group { margin-bottom: 14px; }
+    .input-group label { display: block; font-size: 13px; color: var(--sub); margin-bottom: 5px; font-weight: 500; }
+    .input-group input, .input-group textarea { width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: 10px; font-size: 15px; outline: none; transition: border-color 0.2s; }
+    .input-group input:focus, .input-group textarea:focus { border-color: var(--primary); }
+    .input-group textarea { resize: vertical; font-family: monospace; font-size: 13px; min-height: 100px; }
+    /* ===== Toast ===== */
+    .toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%) translateY(-110px); background: #333; color: white; padding: 10px 22px; border-radius: 8px; font-size: 13px; z-index: 9999; transition: transform 0.3s; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.success { background: var(--primary); }
+    .toast.error { background: var(--danger); }
+    .text-sub { color: var(--sub); font-size: 12px; }
+    .mt-10 { margin-top: 10px; }
+    .mt-14 { margin-top: 14px; }
+    .mb-10 { margin-bottom: 10px; }
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+    /* ===== 登录页 ===== */
+    .login-page { background: linear-gradient(135deg, #43A047 0%, #1B5E20 100%); }
+    .login-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 24px 20px; }
+    .login-logo { width: 76px; height: 76px; background: white; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 36px; box-shadow: 0 8px 28px rgba(0,0,0,0.18); margin: 0 auto 16px; }
+    .login-title { font-size: 28px; font-weight: 900; color: white; text-align: center; margin-bottom: 4px; }
+    .login-sub { font-size: 13px; color: rgba(255,255,255,0.75); text-align: center; margin-bottom: 36px; }
+    .login-card { background: white; border-radius: 20px; padding: 28px 22px; box-shadow: 0 12px 40px rgba(0,0,0,0.18); }
+    .login-tip { background: #FFF8E1; border-radius: 8px; padding: 9px 12px; font-size: 12px; color: #E65100; margin-bottom: 16px; }
+    .remember-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .remember-row input { width: 16px; height: 16px; accent-color: var(--primary); }
+    .remember-row label { font-size: 13px; color: var(--sub); cursor: pointer; }
+    .login-footer { padding: 20px; text-align: center; color: rgba(255,255,255,0.55); font-size: 11px; }
+    /* ===== 主页导航 ===== */
+    .home-nav { background: var(--primary); color: white; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 200; box-shadow: 0 2px 12px rgba(76,175,80,0.35); flex-shrink: 0; }
+    .home-nav-title { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .nav-logo { width: 28px; height: 28px; background: white; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--primary); font-weight: 900; }
+    .nav-right { display: flex; align-items: center; gap: 8px; }
+    .nav-user { font-size: 13px; opacity: 0.9; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav-logout { background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 5px 11px; border-radius: 6px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+    /* ===== Tab切换 ===== */
+    .tabs { display: flex; background: white; box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: sticky; top: 56px; z-index: 190; flex-shrink: 0; }
+    .tab { flex: 1; padding: 13px 0; text-align: center; font-size: 14px; font-weight: 600; color: var(--sub); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    /* ===== 区块标题 ===== */
+    .sec-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 5px; }
+    /* ===== 搜索栏 ===== */
+    .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .search-row input { flex: 1; padding: 10px 12px; border: 2px solid var(--border); border-radius: 10px; font-size: 14px; outline: none; }
+    .search-row input:focus { border-color: var(--primary); }
+    /* ===== 面包屑 ===== */
+    .crumb-bar { display: flex; align-items: center; gap: 2px; padding: 6px 0; font-size: 12px; color: var(--sub); overflow-x: auto; white-space: nowrap; flex-wrap: nowrap; }
+    .crumb { color: var(--primary); cursor: pointer; padding: 2px 5px; border-radius: 4px; flex-shrink: 0; }
+    .crumb:hover { background: #E8F5E9; }
+    .crumb-arrow { color: #ccc; flex-shrink: 0; }
+    /* ===== 文件列表 ===== */
+    .file-list { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; max-height: 380px; overflow-y: auto; }
+    .file-item { display: flex; align-items: center; gap: 10px; padding: 11px 13px; border-bottom: 1px solid var(--border); transition: background 0.15s; cursor: pointer; }
+    .file-item:last-child { border-bottom: none; }
+    .file-item:hover { background: #F8F9FA; }
+    .file-item.selected { background: #E8F5E9; }
+    .file-item-icon { font-size: 28px; flex-shrink: 0; }
+    .file-item-info { flex: 1; min-width: 0; }
+    .file-item-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-item-meta { font-size: 11px; color: var(--sub); margin-top: 2px; }
+    .file-item-btn { font-size: 11px; padding: 4px 9px; border-radius: 5px; border: 1.5px solid var(--primary); color: var(--primary); background: transparent; cursor: pointer; white-space: nowrap; flex-shrink: 0; font-weight: 600; }
+    .file-item.selected .file-item-btn { background: var(--primary); color: white; }
+    .file-empty { text-align: center; padding: 32px; color: var(--sub); font-size: 13px; }
+    .loading { text-align: center; padding: 28px; color: var(--sub); font-size: 13px; }
+    /* ===== 结果框 ===== */
+    .result-box { background: #F8F9FA; border: 1px solid var(--border); border-radius: 10px; padding: 13px; margin-top: 12px; display: none; }
+    .result-box.show { display: block; }
+    .result-label { font-size: 11px; color: var(--sub); margin-bottom: 5px; }
+    .result-link { font-size: 12px; font-family: monospace; word-break: break-all; color: var(--text); line-height: 1.5; background: white; padding: 9px; border-radius: 6px; border: 1px solid var(--border); display: block; max-height: 90px; overflow-y: auto; }
+    .result-chips { display: flex; gap: 7px; margin-top: 8px; flex-wrap: wrap; }
+    .chip { background: var(--primary); color: white; padding: 3px 9px; border-radius: 20px; font-size: 11px; }
+    /* ===== 进度条 ===== */
+    .prog { margin: 10px 0; display: none; }
+    .prog.show { display: block; }
+    .prog-text { font-size: 12px; color: var(--sub); margin-bottom: 5px; display: flex; justify-content: space-between; }
+    .prog-bar { height: 7px; background: #E8E8E8; border-radius: 4px; overflow: hidden; }
+    .prog-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #66BB6A); border-radius: 4px; transition: width 0.15s; }
+    /* ===== 保存统计 ===== */
+    .save-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .stat-box { background: #F5F6FA; border-radius: 10px; padding: 14px; text-align: center; }
+    .stat-num { font-size: 28px; font-weight: 900; color: var(--primary); }
+    .stat-num.fail { color: var(--danger); }
+    .stat-lbl { font-size: 11px; color: var(--sub); margin-top: 3px; }
+    /* ===== JSON提示 ===== */
+    .json-tip { background: #E3F2FD; border: 1px solid #90CAF9; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #1565C0; margin-bottom: 14px; }
+    /* ===== 选中文件信息卡 ===== */
+    .sel-info { background: linear-gradient(135deg, #E8F5E9, #C8E6C9); border: 2px solid var(--primary); border-radius: 12px; padding: 14px; margin-bottom: 12px; display: none; }
+    .sel-info.show { display: block; }
+    .sel-info-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .sel-info-icon { font-size: 34px; }
+    .sel-info-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sel-info-meta { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .sel-info-remove { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 22px; line-height: 1; margin-left: auto; flex-shrink: 0; }
+    /* ===== Spinner ===== */
+    .spin { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* ===== 安全警告 ===== */
+    .sec-warn { background: #FFF3E0; border: 1px solid #FFB74D; border-radius: 10px; padding: 11px 13px; font-size: 12px; color: #E65100; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 7px; }
+  </style>
+</head>
+<body>
+
+<!-- ==================== 登录页 ==================== -->
+<div id="page-login" class="page login-page active">
+  <div class="login-body">
+    <div class="login-logo">🚀</div>
+    <div class="login-title">123秒传</div>
+    <div class="login-sub">123云盘 · 秒传链接生成与转存</div>
+
+    <div class="login-card">
+      <div class="login-tip">
+        ⚠️ 本 App 为第三方工具，建议使用小号，不要输入重要账号密码
+      </div>
+      <div class="input-group">
+        <label>手机号 / 账号</label>
+        <input type="text" id="inp-user" placeholder="请输入手机号或账号" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <label>密码</label>
+        <input type="password" id="inp-pwd" placeholder="请输入密码" autocomplete="off">
+      </div>
+      <div class="remember-row">
+        <input type="checkbox" id="chk-remember" checked>
+        <label for="chk-remember">记住账号密码</label>
+      </div>
+      <button class="btn btn-primary btn-full" id="btn-login" onclick="doLogin()">
+        <span id="btn-login-text">登录 123云盘</span>
+      </button>
+    </div>
+  </div>
+  <div class="login-footer">123秒传 · 仅供学习交流使用</div>
+</div>
+
+<!-- ==================== 主页 ==================== -->
+<div id="page-home" class="page">
+  <!-- 导航栏 -->
+  <div class="home-nav">
+    <div class="home-nav-title">
+      <div class="nav-logo">🚀</div>
+      <span>123秒传</span>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-user">—</span>
+      <button class="nav-logout" onclick="logout()">退出</button>
+    </div>
+  </div>
+
+  <!-- Tab切换 -->
+  <div class="tabs">
+    <div class="tab active" data-tab="cloud" onclick="switchTab('cloud')">☁️ 网盘文件</div>
+    <div class="tab" data-tab="save" onclick="switchTab('save')">📥 保存秒传</div>
+  </div>
+
+  <!-- ===== 网盘文件 ===== -->
+  <div id="tab-cloud" class="tab-content active">
+    <div class="card">
+      <div class="sec-title">📂 从网盘选择文件</div>
+
+      <!-- 选中文件信息 -->
+      <div class="sel-info" id="sel-info">
+        <div class="sel-info-row">
+          <div class="sel-info-icon">📄</div>
+          <div style="flex:1;min-width:0;">
+            <div class="sel-info-name" id="sel-name">—</div>
+            <div class="sel-info-meta" id="sel-meta">—</div>
+          </div>
+          <button class="sel-info-remove" onclick="clearSelection()">×</button>
+        </div>
+      </div>
+
+      <!-- 搜索+刷新 -->
+      <div class="search-row">
+        <input type="text" id="inp-search" placeholder="搜索文件名..." oninput="doSearch(this.value)">
+        <button class="btn btn-outline btn-sm" onclick="goHome()">🏠</button>
+        <button class="btn btn-outline btn-sm" onclick="refreshList()">🔄</button>
+      </div>
+
+      <!-- 面包屑 -->
+      <div class="crumb-bar" id="crumb-bar"></div>
+
+      <!-- 文件列表 -->
+      <div class="file-list" id="file-list">
+        <div class="loading" id="list-loading">
+          <div class="spin" style="border-color:#ccc;border-top-color:var(--primary);margin:0 auto 8px;"></div>
+          加载中...
+        </div>
+      </div>
+
+      <!-- 结果 -->
+      <div class="result-box" id="cloud-result">
+        <div class="result-label">✅ 秒传链接</div>
+        <a class="result-link" id="cloud-link" href="#" onclick="event.preventDefault()">—</a>
+        <div class="result-chips" id="cloud-chips"></div>
+        <div class="btn-row mt-10">
+          <button class="btn btn-primary btn-sm btn-full" onclick="copyLink('cloud')">📋 复制链接</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full mt-10" id="btn-gen-cloud" onclick="genFromCloud()" disabled>
+        <span id="btn-gen-cloud-text">⚡ 生成秒传</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== 保存秒传 ===== -->
+  <div id="tab-save" class="tab-content">
+    <div class="card">
+      <div class="sec-title">🔗 保存秒传链接</div>
+
+      <div class="json-tip">💡 支持：秒传链接、脚本JSON导出、123云盘分享链接</div>
+
+      <div class="input-group">
+        <textarea id="inp-save" placeholder="粘贴秒传链接或JSON内容...
+
+格式：
+① 123FLCPV2$etag#size#filename
+② etag#size#filename
+③ 脚本导出完整JSON"></textarea>
+      </div>
+
+      <div class="prog" id="save-prog">
+        <div class="prog-text">
+          <span id="save-status">保存中...</span>
+          <span id="save-pct">0%</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" id="save-fill"></div></div>
+      </div>
+
+      <div class="result-box" id="save-result">
+        <div class="save-stats" id="save-stats"></div>
+        <div class="btn-row mt-10">
+          <button class="btn btn-outline btn-sm" onclick="copyLink('save')">📋 复制失败项</button>
+          <button class="btn btn-outline btn-sm" onclick="retryFail()">🔄 重试</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full mt-10" id="btn-save" onclick="doSave()">
+        <span id="btn-save-text">⚡ 开始保存</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 全局状态 =====
+const S = {
+  token: localStorage.getItem('t') || '',
+  user: localStorage.getItem('u') || '',
+  pwd: localStorage.getItem('p') || '',
+  files: [],
+  curDir: '0',
+  stack: [{ id: '0', n: '全部文件' }],
+  sel: null,       // {fileId, fileName, size, etag}
+  failList: [],
+};
+const API = { login: 'https://login.123pan.com/api/user/sign_in', base: 'https://www.123pan.com' };
+
+// ===== CRC32签名 =====
+function crc32(d){
+  const t=new Uint32Array(256);
+  for(let i=0;i<256;i++){let c=i;for(let j=0;j<8;j++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[i]=c;}
+  let r=0xFFFFFFFF;
+  for(let i=0;i<d.length;i++)r=t[(r^d.charCodeAt(i))&0xFF]^(r>>>8);
+  return(r^0xFFFFFFFF)>>>0;
+}
+function signP(p){
+  const T='adefghlimjnoopkqrstubcvwsz';
+  const rnd=String(Math.round(1e7*Math.random()));
+  const now=new Date();
+  const cst=new Date(now.getTime()+(8*60-now.getTimezoneOffset())*60000);
+  const ts=String(cst.getTime()/1000);
+  const ds=cst.toISOString().replace(/[-:T]/g,'').slice(0,12);
+  const mp=ds.split('').map(c=>T[parseInt(c)]||c).join('');
+  const tsgn=String(crc32(mp));
+  const dat=[ts,rnd,p,'web','3',tsgn].join('|');
+  return tsgn+'='+ts+'-'+rnd+'-'+String(crc32(dat));
+}
+function buildUrl(p){
+  return p+'?'+signP(p);
+}
+
+// ===== 页面初始化 =====
+(function init(){
+  if(S.token){ showPage('home'); document.getElementById('nav-user').textContent=S.user||'用户'; }
+  else showPage('login');
+  if(S.user) document.getElementById('inp-user').value=S.user;
+  if(S.pwd) document.getElementById('inp-pwd').value=S.pwd;
+  document.getElementById('inp-pwd').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+})();
+
+function showPage(n){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+n).classList.add('active');
+}
+
+function switchTab(n){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector('.tab[data-tab="'+n+'"]').classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+n).classList.add('active');
+  if(n==='cloud'&&S.files.length===0) loadDir('0');
+}
+
+// ===== Toast =====
+let _tt;
+function toast(m,t='info'){
+  const el=document.getElementById('toast');
+  el.textContent=m; el.className='toast '+t+' show';
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// ===== 登录 =====
+async function doLogin(){
+  const user=document.getElementById('inp-user').value.trim();
+  const pwd=document.getElementById('inp-pwd').value;
+  const rem=document.getElementById('chk-remember').checked;
+  if(!user||!pwd){toast('请输入账号和密码','error');return;}
+  const btn=document.getElementById('btn-login');
+  const btnT=document.getElementById('btn-login-text');
+  btn.disabled=true; btnT.innerHTML='<span class="spin"></span> 登录中...';
+  try{
+    const isEmail=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user);
+    const body=isEmail?{mail:user,password:pwd,type:2}:{passport:user,password:pwd,remember:rem};
+    const r=await fetch(API.login,{
+      method:'POST',
+      headers:{'Content-Type':'application/json;charset=UTF-8','Origin':API.base,'Referer':API.base+'/','User-Agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15','platform':'web','app-version':'3'},
+      body:JSON.stringify(body)
+    });
+    const d=await r.json();
+    if(d.code===200&&d.data?.token){
+      S.token=d.data.token; S.user=user;
+      localStorage.setItem('t',S.token); localStorage.setItem('u',S.user);
+      if(rem){S.pwd=pwd;localStorage.setItem('p',pwd);}else{localStorage.removeItem('p');S.pwd='';}
+      document.getElementById('nav-user').textContent=user;
+      toast('登录成功！','success');
+      setTimeout(()=>showPage('home'),350);
+    }else{toast(d.message||'登录失败，请检查账号密码','error');}
+  }catch(e){toast('网络异常，请检查网络','error');}
+  finally{btn.disabled=false;btnT.textContent='登录 123云盘';}
+}
+
+function logout(){
+  if(!confirm('确定退出登录？'))return;
+  localStorage.removeItem('t');localStorage.removeItem('u');localStorage.removeItem('p');
+  S.token='';S.user='';S.files=[];S.sel=null;
+  document.getElementById('inp-user').value='';document.getElementById('inp-pwd').value='';
+  showPage('login');toast('已退出','info');
+}
+
+// ===== API请求 =====
+async function api(method,path,body,params){
+  let url=buildUrl(path);
+  if(params){const qs=new URLSearchParams(params).toString();url=path+'?'+qs+'&'+signP(path);}
+  const r=await fetch(API.base+url,{
+    method,headers:{'Content-Type':'application/json;charset=UTF-8','Authorization':'Bearer '+S.token,'Origin':API.base,'Referer':API.base+'/','User-Agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15','platform':'web','app-version':'3'},
+    body:body?JSON.stringify(body):undefined
+  });
+  const d=await r.json();
+  if(d.code===401){toast('登录已过期','error');logout();throw'E';}
+  if(d.code!==0)throw new Error(d.message||'请求失败');
+  return d;
+}
+
+// ===== 网盘文件 =====
+async function loadDir(parentId){
+  const listEl=document.getElementById('file-list');
+  listEl.innerHTML='<div class="loading"><div class="spin" style="border-color:#ccc;border-top-color:var(--primary);margin:0 auto 8px;"></div>加载中...</div>';
+  document.getElementById('cloud-result').classList.remove('show');
+  document.getElementById('sel-info').classList.remove('show');
+  S.sel=null; document.getElementById('btn-gen-cloud').disabled=true;
+
+  if(parentId==='0'){S.stack=[{id:'0',n:'全部文件'}];S.curDir='0';}
+  else{
+    const ei=S.stack.findIndex(x=>x.id===parentId);
+    if(ei!==-1)S.stack=S.stack.slice(0,ei+1);else S.stack.push({id:parentId,n:'…'});
+  }
+  S.curDir=parentId;
+  renderCrumb();
+
+  try{
+    let page=1,all=[];
+    while(true){
+      const d=await api('GET','/b/api/file/list/new',null,{
+        driveId:'0',limit:'100',next:'0',orderBy:'file_id',orderDirection:'desc',
+        parentFileId:parentId,trashed:'false',SearchData:'',Page:String(page),
+        OnlyLookAbnormalFile:'0',event:'homeListFile',operateType:'4',inDirectSpace:'false'
+      });
+      const fs=d?.data?.InfoList||[];
+      all=all.concat(fs);
+      if(fs.length<100||d?.data?.Next==='-1')break;
+      page++;if(page>30)break;
+    }
+    S.files=all; renderFiles(all);
+  }catch(e){if(e!=='E')listEl.innerHTML='<div class="file-empty">加载失败: '+e.message+'</div>';}
+}
+
+function renderCrumb(){
+  const el=document.getElementById('crumb-bar');
+  el.innerHTML=S.stack.map((d,i)=>
+    '<span class="crumb" onclick="loadDir(\''+d.id+'\')">'+esc(d.n)+'</span>'+
+    (i<S.stack.length-1?'<span class="crumb-arrow">›</span>':'')
+  ).join('');
+}
+
+function renderFiles(fs){
+  const listEl=document.getElementById('file-list');
+  if(fs.length===0){listEl.innerHTML='<div class="file-empty">📭 此目录为空</div>';return;}
+  listEl.innerHTML=fs.map(f=>{
+    const isDir=f.Type===1;
+    const icon=isDir?'📁':'📄';
+    const sel=S.sel?.fileId===f.FileId;
+    return'<div class="file-item'+(sel?' selected':'')+'" data-id="'+f.FileId+'" data-name="'+esc(f.FileName)+'" data-size="'+f.Size+'" data-etag="'+esc(f.Etag||'')+'" data-type="'+f.Type+'" onclick="onItemClick(event,this)">'+
+      '<div class="file-item-icon">'+icon+'</div>'+
+      '<div class="file-item-info">'+
+        '<div class="file-item-name">'+esc(f.FileName)+'</div>'+
+        '<div class="file-item-meta">'+(isDir?'文件夹':fmtSize(f.Size))+'</div>'+
+      '</div>'+
+      '<button class="file-item-btn" onclick="event.stopPropagation();pickItem(this)">'+(sel?'✓ 已选':'选择')+'</button>'+
+    '</div>';
+  }).join('');
+}
+
+function onItemClick(e,el){
+  if(el.dataset.type==='1'){loadDir(el.dataset.id);}
+}
+function pickItem(btn){
+  const el=btn.closest('.file-item');
+  if(el.dataset.type==='1'){toast('请选择文件','error');return;}
+  const isSel=S.sel?.fileId===el.dataset.id;
+  document.querySelectorAll('.file-item').forEach(it=>{it.classList.remove('selected');it.querySelector('.file-item-btn').textContent='选择';});
+  if(!isSel){
+    el.classList.add('selected');btn.textContent='✓ 已选';
+    S.sel={fileId:el.dataset.id,fileName:el.dataset.name,size:parseInt(el.dataset.size)||0,etag:el.dataset.etag};
+    document.getElementById('sel-name').textContent=S.sel.fileName;
+    document.getElementById('sel-meta').textContent=fmtSize(S.sel.size);
+    document.getElementById('sel-info').classList.add('show');
+    document.getElementById('cloud-result').classList.remove('show');
+    document.getElementById('btn-gen-cloud').disabled=false;
+  }else{
+    S.sel=null;
+    document.getElementById('sel-info').classList.remove('show');
+    document.getElementById('btn-gen-cloud').disabled=true;
+  }
+}
+
+function clearSelection(){
+  S.sel=null;
+  document.querySelectorAll('.file-item').forEach(it=>{it.classList.remove('selected');it.querySelector('.file-item-btn').textContent='选择';});
+  document.getElementById('sel-info').classList.remove('show');
+  document.getElementById('cloud-result').classList.remove('show');
+  document.getElementById('btn-gen-cloud').disabled=true;
+}
+
+function goHome(){loadDir('0');}
+function refreshList(){loadDir(S.curDir);}
+
+function doSearch(kw){
+  if(!kw.trim()){renderFiles(S.files);return;}
+  const k=kw.toLowerCase();
+  renderFiles(S.files.filter(f=>f.FileName.toLowerCase().includes(k)));
+}
+
+async function genFromCloud(){
+  if(!S.sel){toast('请先选择一个文件','error');return;}
+  const btn=document.getElementById('btn-gen-cloud');
+  btn.disabled=true; document.getElementById('btn-gen-cloud-text').innerHTML='<span class="spin"></span> 生成中...';
+  try{
+    if(!S.sel.etag){toast('该文件没有etag，无法生成秒传','error');return;}
+    const d=await api('POST','/b/api/file/upload_request',{
+      driveId:0,etag:S.sel.etag,fileName:S.sel.fileName,parentFileId:'0',size:S.sel.size,type:0,duplicate:1
+    });
+    const ok=d?.data?.Reuse===true||d?.data?.reuse===true;
+    if(!ok){toast('秒传失败：文件在云盘中不存在','error');return;}
+    const link='123FLCPV2$'+S.sel.etag+'#'+S.sel.size+'#'+S.sel.fileName.replace(/[%#$]/g,'');
+    document.getElementById('cloud-link').textContent=link;
+    document.getElementById('cloud-chips').innerHTML='<span class="chip">📦 '+fmtSize(S.sel.size)+'</span><span class="chip">📄 '+esc(S.sel.fileName)+'</span>';
+    document.getElementById('cloud-result').classList.add('show');
+    toast('生成成功！','success');
+  }catch(e){if(e!=='E')toast('生成失败: '+e.message,'error');}
+  finally{btn.disabled=false;document.getElementById('btn-gen-cloud-text').textContent='⚡ 生成秒传';}
+}
+
+// ===== 保存秒传 =====
+async function doSave(){
+  const txt=document.getElementById('inp-save').value.trim();
+  if(!txt){toast('请输入秒传内容','error');return;}
+  const btn=document.getElementById('btn-save');
+  btn.disabled=true; document.getElementById('btn-save-text').innerHTML='<span class="spin"></span> 保存中...';
+  document.getElementById('save-result').classList.remove('show');
+  const prog=document.getElementById('save-prog');
+  const fill=document.getElementById('save-fill');
+  const pctEl=document.getElementById('save-pct');
+  const stEl=document.getElementById('save-status');
+  prog.classList.add('show'); fill.style.width='0%';
+
+  try{
+    let list=[];
+    try{
+      const j=JSON.parse(txt);
+      if(j.files&&Array.isArray(j.files)){
+        list=j.files.map(f=>({etag:f.etag,size:parseInt(f.size)||0,fileName:(f.path.split('/').pop()||f.path).trim()}));
+      }
+    }catch{}
+    if(!list.length) list=parseLinks(txt);
+    if(!list.length) throw new Error('未识别到有效秒传内容');
+
+    let ok=0,bad=0; S.failList=[];
+    for(let i=0;i<list.length;i++){
+      const item=list[i];
+      const pct=Math.round((i+1)/list.length*100);
+      fill.style.width=pct+'%'; pctEl.textContent=pct+'%';
+      stEl.textContent='保存 '+(i+1)+'/'+list.length;
+      try{
+        const d=await api('POST','/b/api/file/upload_request',{
+          driveId:0,etag:item.etag,fileName:item.fileName,parentFileId:'0',size:item.size,type:0,duplicate:2
+        });
+        if(d?.data?.Reuse===true||d?.data?.reuse===true)ok++;else{bad++;S.failList.push(item);}
+      }catch{e.bad++;item.err=e.message;S.failList.push(item);}
+      await new Promise(r=>setTimeout(r,200));
+    }
+    prog.classList.remove('show');
+    document.getElementById('save-stats').innerHTML=
+      '<div class="stat-box"><div class="stat-num">'+ok+'</div><div class="stat-lbl">✅ 成功</div></div>'+
+      '<div class="stat-box"><div class="stat-num'+(bad>0?' fail':'')+'">'+bad+'</div><div class="stat-lbl">❌ 失败</div></div>';
+    document.getElementById('save-result').classList.add('show');
+    if(bad===0)toast('全部 '+ok+' 个文件保存成功！','success');
+    else toast('完成：'+ok+' 成功，'+bad+' 失败',bad>ok/2?'error':'info');
+  }catch(e){prog.classList.remove('show');toast(e.message,'error');}
+  finally{btn.disabled=false;document.getElementById('btn-save-text').textContent='⚡ 开始保存';}
+}
+
+function parseLinks(txt){
+  const res=[];
+  txt.replace(/123FLCPV2\$/g,'').split('$').filter(Boolean).forEach(seg=>{
+    const p=seg.split('#');
+    if(p.length<3)return;
+    let[etag,size,fpath]=p;
+    if(fpath.includes('%'))fpath=fpath.split('%').pop();
+    res.push({etag:etag.trim(),size:parseInt(size)||0,fileName:(fpath.split('/').pop()||fpath).trim()});
+  });
+  return res;
+}
+
+function retryFail(){
+  if(!S.failList.length){toast('没有失败项','info');return;}
+  const txt=S.failList.map(f=>f.etag+'#'+f.size+'#'+f.fileName).join('\n');
+  document.getElementById('inp-save').value=txt;
+  toast('已载入 '+S.failList.length+' 个失败文件','info');doSave();
+}
+
+// ===== 复制 =====
+function copyLink(type){
+  let txt='';
+  if(type==='cloud')txt=document.getElementById('cloud-link').textContent;
+  else txt=S.failList.map(f=>f.etag+'#'+f.size+'#'+f.fileName).join('\n');
+  if(!txt||txt==='—'){toast('没有内容','error');return;}
+  navigator.clipboard.writeText(txt).then(()=>toast('已复制！','success')).catch(()=>toast('复制失败','error'));
+}
+
+// ===== 工具 =====
+function fmtSize(b){
+  if(b<1024)return b+' B';
+  if(b<1024*1024)return(b/1024).toFixed(1)+' KB';
+  if(b<1024*1024*1024)return(b/1024/1024).toFixed(2)+' MB';
+  return(b/1024/1024/1024).toFixed(2)+' GB';
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+</script>
+</body>
+</html>
