@@ -1,14 +1,18 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["/tmp/message-bridge-opencode-plugin"],
-  "agent": {
-    "lark-bridge": {
-      "disable": false,
+  "provider": {
+    "minimax": {
+      "npm": "@ai-sdk/anthropic",
       "options": {
-        "platform": "feishu",
-        "mode": "ws",
-        "app_id": "cli_a97cf8f999b89bc6",
-        "app_secret": "72Ax55KMfwZMfwe8RCDoxhxn3uBx8tS6"
+        "baseURL": "https://api.minimax.io/anthropic/v1"
+      },
+      "models": {
+        "MiniMax-M2.7": {
+          "name": "MiniMax-M2.7"
+        },
+        "MiniMax-M2.5": {
+          "name": "MiniMax-M2.5-Free"
+        }
       }
     }
   }

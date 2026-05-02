@@ -1,0 +1,8 @@
+{
+  "name": "opencode-deploy",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "opencode-ai": "1.14.32"
+  }
+}
