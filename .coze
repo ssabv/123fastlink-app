@@ -1,0 +1,11 @@
+[project]
+name = "opencode"
+requires = ["nodejs-24"]
+
+[dev]
+build = ["bash", "-c", "which opencode || npm install -g opencode-ai@latest"]
+run = ["opencode", "serve", "--port", "5000", "--hostname", "0.0.0.0", "--print-logs"]
+
+[deploy]
+build = ["bash", "-c", "which opencode || npm install -g opencode-ai@latest"]
+run = ["opencode", "serve", "--port", "5000", "--hostname", "0.0.0.0", "--print-logs"]
