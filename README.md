@@ -2,180 +2,57 @@
 
 > 123云盘 秒传链接生成与转存的独立工具 App
 
+## 在线访问
+
+🌐 **网页版**：https://xjxjj.ccwu.cc/ （部署于 Cloudflare Pages）
+
+📱 **安卓 App**：下载下方 APK 文件安装
+
 ## 功能
 
 - ✅ **生成秒传**：选择本地文件 → 计算 Hash → 生成秒传链接
 - ✅ **保存秒传**：粘贴秒传链接 → 一键秒传保存到123云盘
 - ✅ **复制分享**：生成的链接一键复制
 - ✅ **支持大文件**：分片计算 Hash，支持超大文件
+- ✅ **网盘浏览**：登录后可浏览云盘文件
+- ✅ **批量生成**：批量生成目录下所有文件秒传
+- ✅ **分享解析**：解析分享链接并生成秒传
 
 ---
 
-## 方法一：网页直接使用（最快，1分钟）
+## 分支说明
 
-不想打包 App？直接用手机浏览器打开 HTML 文件即可：
+| 分支 | 说明 |
+|------|------|
+| `main` | 安卓 App 版本（需要打包 APK） |
+| `web` | 网页版（可直接部署到 Cloudflare Pages） |
 
-1. 把 `index.html` 传到手机（通过微信/QQ/百度网盘/蓝牙）
-2. 用浏览器打开它
-3. 登录即可使用所有功能
-
-**推荐浏览器**：Chrome、Safari、Edge、夸克（**微信内置浏览器**不支持文件选择）
+网页版在线访问：https://xjxjj.ccwu.cc/
 
 ---
 
-## 方法二：打包成安卓 App（5-15分钟，无需写代码）
+## 快速开始
 
-### 工具一：在线打包（适合完全新手，推荐 👍）
+### 方法一：网页直接使用（推荐 👍）
 
-1. 打开 **https://webintoapp.com/**（免费）
-2. 点击 **"Create App"**
-3. App Name 填 `123秒传`，Website URL 填 `https://临时填一下.com`（后面改）
-4. 选择 **"Upload ZIP"** 上传一个 zip 包
-5. 把 `index.html` 压缩成 zip 上传
-6. 完成后下载 APK 安装
+直接访问：https://xjxjj.ccwu.cc/
 
-**更简单的方法** —— 使用 Appr.idea 的"网页转App"功能：
-1. 打开 **https://appr.idea.run/**（免费）
+或本地使用：
+1. 下载 `index.html`
+2. 用浏览器打开
+3. 登录即可
+
+### 方法二：打包成安卓 App
+
+#### 在线打包（1分钟）
+
+1. 打开 **https://appr.idea.run/**
 2. 填 App Name，选择上传 HTML
-3. 直接下载 APK
+3. 下载 APK 安装
 
-### 工具二：安卓工作室打包（需要电脑）
+#### Android Studio 打包
 
-#### 准备工作（只做一次）
-1. 下载 **Android Studio**：https://developer.android.com/studio
-2. 安装好，记住安装路径
-
-#### 步骤
-
-**第一步：创建项目**
-
-打开 Android Studio，选择：
-- **"Empty Views Activity"**（不是 Compose）
-- Language: **Java**（或 Kotlin 都行）
-- Minimum SDK: **API 24**（Android 7.0，兼容性好）
-
-Project Name 填 `123FastLink`，点击 Create。
-
----
-
-**第二步：准备文件**
-
-1. 在左侧项目面板，展开 `app` → `src` → `main`
-2. 在 `main` 文件夹上右键 → **New** → **Directory** → 填 `assets` → 回车
-3. 把本仓库的 `index.html` 拖进 `assets` 文件夹
-
-> 如果拖拽不行，右键 assets → Reveal in Finder/Explorer → 手动复制文件进去
-
----
-
-**第三步：写 WebView 代码**
-
-展开 `app` → `src` → `main` → `java` → `com.example.qianqian123fastlink`（你的包名）
-
-打开 `MainActivity.java`，清空内容，替换为：
-
-```java
-package com.example.qianqian123fastlink;
-
-import android.annotation.SuppressLint;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.os.Bundle;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import androidx.appcompat.app.AppCompatActivity;
-
-public class MainActivity extends AppCompatActivity {
-    @SuppressLint("SetJavaScriptEnabled")
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        WebView webView = findViewById(R.id.webview);
-        WebSettings ws = webView.getSettings();
-        ws.setJavaScriptEnabled(true);
-        ws.setDomStorageEnabled(true);
-        ws.setAllowFileAccess(true);
-        ws.setCacheMode(WebSettings.LOAD_NO_CACHE);
-
-        // 加载本地 HTML 文件
-        webView.loadUrl("file:///android_asset/index.html");
-
-        // 防止跳转到外部浏览器
-        webView.setWebViewClient(new WebViewClient());
-    }
-
-    @Override
-    public void onBackPressed() {
-        WebView wv = findViewById(R.id.webview);
-        if (wv.canGoBack()) {
-            wv.goBack();
-        } else {
-            super.onBackPressed();
-        }
-    }
-}
-```
-
----
-
-**第四步：配置网络权限**
-
-展开 `app` → `src` → `main` → `AndroidManifest.xml`
-
-在 `<manifest ...>` 标签**内**添加（放在 package 那行下面）：
-
-```xml
-<uses-permission android:name="android.permission.INTERNET"/>
-<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-```
-
-在 `<application ...>` 标签里添加：
-
-```xml
-android:usesCleartextTraffic="true"
-```
-
----
-
-**第五步：调整布局（让 WebView 全屏）**
-
-打开 `res` → `layout` → `activity_main.xml`
-
-清空内容，替换为：
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
-
-    <WebView
-        android:id="@+id/webview"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-</FrameLayout>
-```
-
----
-
-**第六步：设置 App 图标（可选）**
-
-在 `res` → `mipmap-hdpi`（等）等文件夹里放一个 512x512 的 PNG 图标（PNG用`ic_launcher.png`命名）
-
----
-
-**第七步：编译 APK**
-
-1. 顶部菜单 → **Build** → **Generate Signed Bundle / APK...**
-2. 选择 **APK** → Next
-3. 点击 **Create new** 创建签名（填密码，记住所填内容）
-4. 选择 **release** → Finish
-5. 等待编译完成，在下方提示栏点 **locate** 找到 APK 文件
-6. 把 APK 传到手机安装
+参考下方详细教程...
 
 ---
 
