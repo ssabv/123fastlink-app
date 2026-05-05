@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>123秒传</title>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --primary: #4CAF50;
+      --primary-dark: #388E3C;
+      --bg: #F0F2F5;
+      --card: #FFFFFF;
+      --text: #1A1A2E;
+      --sub: #666;
+      --border: #E8E8E8;
+      --danger: #E74C3C;
+      --warn: #F39C12;
+      --purple: #8E44AD;
+      --purple-dark: #6C3483;
+      --radius: 14px;
+      --shadow: 0 2px 16px rgba(0,0,0,0.08);
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+
+    /* ===== 页面切换 ===== */
+    .page { display: none; position: fixed; inset: 0; overflow-y: auto; }
+    .page.active { display: flex; flex-direction: column; }
+
+    /* ===== 通用卡片 ===== */
+    .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); margin: 14px; padding: 20px; }
+
+    /* ===== 按钮 ===== */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 13px 20px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-purple { background: var(--purple); color: white; }
+    .btn-purple:hover { background: var(--purple-dark); }
+    .btn-purple:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+    .btn-sm { padding: 9px 14px; font-size: 13px; }
+    .btn-full { width: 100%; }
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+    .btn-row .btn { flex: 1; }
+
+    /* ===== 输入框 ===== */
+    .input-group { margin-bottom: 14px; }
+    .input-group label { display: block; font-size: 13px; color: var(--sub); margin-bottom: 5px; font-weight: 500; }
+    .input-group input, .input-group textarea { width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: 10px; font-size: 15px; outline: none; transition: border-color 0.2s; background: white; }
+    .input-group input:focus, .input-group textarea:focus { border-color: var(--primary); }
+    .input-group textarea { resize: vertical; font-family: monospace; font-size: 13px; min-height: 100px; }
+    .input-group .hint { font-size: 11px; color: var(--sub); margin-top: 4px; }
+
+    /* ===== Toast ===== */
+    .toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%) translateY(-110px); background: #333; color: white; padding: 10px 22px; border-radius: 8px; font-size: 13px; z-index: 9999; transition: transform 0.3s; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.success { background: var(--primary); }
+    .toast.error { background: var(--danger); }
+    .toast.warn { background: var(--warn); }
+
+    .text-sub { color: var(--sub); font-size: 12px; }
+    .mt-10 { margin-top: 10px; }
+    .mt-14 { margin-top: 14px; }
+    .mb-10 { margin-bottom: 10px; }
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+    /* ===== 登录页 ===== */
+    .login-page { background: linear-gradient(135deg, #43A047 0%, #1B5E20 100%); }
+    .login-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 24px 20px; }
+    .login-logo { width: 76px; height: 76px; background: white; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 36px; box-shadow: 0 8px 28px rgba(0,0,0,0.18); margin: 0 auto 16px; }
+    .login-title { font-size: 28px; font-weight: 900; color: white; text-align: center; margin-bottom: 4px; }
+    .login-sub { font-size: 13px; color: rgba(255,255,255,0.75); text-align: center; margin-bottom: 36px; }
+    .login-card { background: white; border-radius: 20px; padding: 28px 22px; box-shadow: 0 12px 40px rgba(0,0,0,0.18); }
+    .login-tip { background: #FFF8E1; border-radius: 8px; padding: 9px 12px; font-size: 12px; color: #E65100; margin-bottom: 16px; }
+
+    /* ===== 登录方式切换 ===== */
+    .login-mode-tabs { display: flex; background: #F0F0F0; border-radius: 10px; padding: 3px; margin-bottom: 16px; }
+    .login-mode-tab { flex: 1; padding: 8px; text-align: center; font-size: 13px; font-weight: 600; color: var(--sub); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+    .login-mode-tab.active { background: white; color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .login-mode-tab[data-mode="open"].active { background: white; color: var(--purple); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+    .login-panel { display: none; }
+    .login-panel.active { display: block; }
+
+    .remember-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .remember-row input { width: 16px; height: 16px; accent-color: var(--primary); }
+    .remember-row label { font-size: 13px; color: var(--sub); cursor: pointer; }
+
+    .login-footer { padding: 20px; text-align: center; color: rgba(255,255,255,0.55); font-size: 11px; }
+
+    /* ===== 主页导航 ===== */
+    .home-nav { background: var(--primary); color: white; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 200; box-shadow: 0 2px 12px rgba(76,175,80,0.35); flex-shrink: 0; }
+    .home-nav-title { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .nav-logo { width: 28px; height: 28px; background: white; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--primary); font-weight: 900; }
+    .nav-right { display: flex; align-items: center; gap: 8px; }
+    .nav-user { font-size: 13px; opacity: 0.9; max-width: 100px; overflow: hidden; text-overlap: ellipsis; white-space: nowrap; }
+    .nav-logout { background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 5px 11px; border-radius: 6px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+
+    /* ===== Tab切换 ===== */
+    .tabs { display: flex; background: white; box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: sticky; top: 56px; z-index: 190; flex-shrink: 0; }
+    .tab { flex: 1; padding: 13px 0; text-align: center; font-size: 14px; font-weight: 600; color: var(--sub); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ===== 区块标题 ===== */
+    .sec-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 5px; }
+
+    /* ===== 搜索栏 ===== */
+    .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .search-row input { flex: 1; padding: 10px 12px; border: 2px solid var(--border); border-radius: 10px; font-size: 14px; outline: none; }
+    .search-row input:focus { border-color: var(--primary); }
+
+    /* ===== 面包屑 ===== */
+    .crumb-bar { display: flex; align-items: center; gap: 2px; padding: 6px 0; font-size: 12px; color: var(--sub); overflow-x: auto; white-space: nowrap; flex-wrap: nowrap; }
+    .crumb { color: var(--primary); cursor: pointer; padding: 2px 5px; border-radius: 4px; flex-shrink: 0; }
+    .crumb:hover { background: #E8F5E9; }
+    .crumb-arrow { color: #ccc; flex-shrink: 0; }
+
+    /* ===== 文件列表 ===== */
+    .file-list { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; max-height: 340px; overflow-y: auto; }
+    .file-item { display: flex; align-items: center; gap: 10px; padding: 11px 13px; border-bottom: 1px solid var(--border); transition: background 0.15s; cursor: pointer; }
+    .file-item:last-child { border-bottom: none; }
+    .file-item:hover { background: #F8F9FA; }
+    .file-item.selected { background: #E8F5E9; }
+    .file-item-icon { font-size: 28px; flex-shrink: 0; }
+    .file-item-info { flex: 1; min-width: 0; }
+    .file-item-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-item-meta { font-size: 11px; color: var(--sub); margin-top: 2px; }
+    .file-item-meta .dir-count { color: var(--primary); }
+    .file-item-btn { font-size: 11px; padding: 4px 9px; border-radius: 5px; border: 1.5px solid var(--primary); color: var(--primary); background: transparent; cursor: pointer; white-space: nowrap; flex-shrink: 0; font-weight: 600; }
+    .file-item.selected .file-item-btn { background: var(--primary); color: white; }
+    .file-empty { text-align: center; padding: 32px; color: var(--sub); font-size: 13px; }
+    .loading { text-align: center; padding: 28px; color: var(--sub); font-size: 13px; }
+
+    /* ===== 结果框 ===== */
+    .result-box { background: #F8F9FA; border: 1px solid var(--border); border-radius: 10px; padding: 13px; margin-top: 12px; display: none; }
+    .result-box.show { display: block; }
+    .result-label { font-size: 11px; color: var(--sub); margin-bottom: 5px; }
+    .result-link { font-size: 12px; font-family: monospace; word-break: break-all; color: var(--text); line-height: 1.5; background: white; padding: 9px; border-radius: 6px; border: 1px solid var(--border); display: block; max-height: 90px; overflow-y: auto; }
+    .result-chips { display: flex; gap: 7px; margin-top: 8px; flex-wrap: wrap; }
+    .chip { background: var(--primary); color: white; padding: 3px 9px; border-radius: 20px; font-size: 11px; }
+
+    /* ===== 进度条 ===== */
+    .prog { margin: 10px 0; display: none; }
+    .prog.show { display: block; }
+    .prog-text { font-size: 12px; color: var(--sub); margin-bottom: 5px; display: flex; justify-content: space-between; }
+    .prog-bar { height: 7px; background: #E8E8E8; border-radius: 4px; overflow: hidden; }
+    .prog-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #66BB6A); border-radius: 4px; transition: width 0.15s; }
+    .prog-fill.purple { background: linear-gradient(90deg, var(--purple), #A569BD); }
+
+    /* ===== 保存统计 ===== */
+    .save-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .stat-box { background: #F5F6FA; border-radius: 10px; padding: 14px; text-align: center; }
+    .stat-num { font-size: 28px; font-weight: 900; color: var(--primary); }
+    .stat-num.fail { color: var(--danger); }
+    .stat-num.skip { color: var(--warn); }
+    .stat-lbl { font-size: 11px; color: var(--sub); margin-top: 3px; }
+
+    /* ===== JSON提示 ===== */
+    .json-tip { background: #E3F2FD; border: 1px solid #90CAF9; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #1565C0; margin-bottom: 14px; }
+
+    /* ===== 选中文件信息卡 ===== */
+    .sel-info { background: linear-gradient(135deg, #E8F5E9, #C8E6C9); border: 2px solid var(--primary); border-radius: 12px; padding: 14px; margin-bottom: 12px; display: none; }
+    .sel-info.show { display: block; }
+    .sel-info-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .sel-info-icon { font-size: 34px; }
+    .sel-info-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sel-info-meta { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .sel-info-remove { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 22px; line-height: 1; margin-left: auto; flex-shrink: 0; }
+
+    /* ===== Spinner ===== */
+    .spin { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .spin.dark { border-color: rgba(0,0,0,0.2); border-top-color: var(--text); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== 安全警告 ===== */
+    .sec-warn { background: #FFF3E0; border: 1px solid #FFB74D; border-radius: 10px; padding: 11px 13px; font-size: 12px; color: #E65100; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 7px; }
+
+    /* ===== 开放平台面板 ===== */
+    .open-platform-info { background: #F3E8FF; border: 1px solid #C39BD3; border-radius: 10px; padding: 11px 13px; font-size: 12px; color: #6C3483; margin-bottom: 14px; line-height: 1.6; }
+
+    /* ===== 批量生成 ===== */
+    .batch-info { background: linear-gradient(135deg, #E8F5E9, #F1F8E9); border: 2px solid var(--primary); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .batch-info.purple-bg { background: linear-gradient(135deg, #F3E8FF, #F5EEF8); border-color: var(--purple); }
+    .batch-stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .batch-stat-row:last-child { margin-bottom: 0; }
+    .batch-stat-label { font-size: 13px; color: var(--sub); }
+    .batch-stat-val { font-size: 15px; font-weight: 700; color: var(--primary); }
+    .batch-stat-val.purple { color: var(--purple); }
+    .batch-log { background: #1A1A2E; color: #00FF88; border-radius: 8px; padding: 10px; font-family: monospace; font-size: 11px; max-height: 160px; overflow-y: auto; margin-top: 10px; line-height: 1.8; white-space: pre-wrap; display: none; }
+    .batch-log.show { display: block; }
+    .batch-log-title { font-size: 12px; color: #00FF88; margin-bottom: 6px; font-weight: 600; }
+
+    /* ===== 分享解析 ===== */
+    .share-result { background: #F8F9FA; border: 1px solid var(--border); border-radius: 10px; padding: 13px; margin-top: 12px; display: none; }
+    .share-result.show { display: block; }
+    .share-file-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .share-file-item:last-child { border-bottom: none; }
+    .share-file-icon { font-size: 20px; flex-shrink: 0; }
+    .share-file-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .share-file-size { color: var(--sub); font-size: 11px; flex-shrink: 0; }
+
+    /* ===== 批量文件列表(选择目录用) ===== */
+    .dir-select-tip { background: #FFF8E1; border: 1px solid #FFD54F; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #E65100; margin-bottom: 12px; }
+
+    /* ===== 下载结果框 ===== */
+    .download-box { background: linear-gradient(135deg, #E8F5E9, #F1F8E9); border: 2px solid var(--primary); border-radius: 12px; padding: 16px; margin-top: 12px; text-align: center; display: none; }
+    .download-box.show { display: block; }
+    .download-box .dl-icon { font-size: 40px; margin-bottom: 8px; }
+    .download-box .dl-title { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+    .download-box .dl-sub { font-size: 12px; color: var(--sub); margin-bottom: 12px; }
+
+    /* ===== 滑块开关 ===== */
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .toggle-label { font-size: 13px; color: var(--text); }
+    .toggle-sub { font-size: 11px; color: var(--sub); }
+    .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 24px; transition: 0.3s; }
+    .toggle-slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+    .toggle input:checked + .toggle-slider { background: var(--primary); }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+  </style>
+</head>
+<body>
+
+<!-- ==================== 登录页 ==================== -->
+<div id="page-login" class="page login-page active">
+  <div class="login-body">
+    <div class="login-logo">🚀</div>
+    <div class="login-title">123秒传</div>
+    <div class="login-sub">123云盘 · 秒传链接生成与转存</div>
+
+    <div class="login-card">
+      <div class="login-tip">
+        ⚠️ 本 App 为第三方工具，建议使用小号，不要输入重要账号密码
+      </div>
+
+      <!-- 账号登录 -->
+      <div class="login-panel active" id="panel-official">
+        <div class="input-group">
+          <label>手机号 / 账号</label>
+          <input type="text" id="inp-user" placeholder="请输入手机号或账号" autocomplete="off">
+        </div>
+        <div class="input-group">
+          <label>密码</label>
+          <input type="password" id="inp-pwd" placeholder="请输入密码" autocomplete="off">
+        </div>
+        <div class="remember-row">
+          <input type="checkbox" id="chk-remember" checked>
+          <label for="chk-remember">记住账号密码</label>
+        </div>
+        <button class="btn btn-primary btn-full" id="btn-login" onclick="doLoginOfficial()">
+          <span id="btn-login-text">登录 123云盘</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="login-footer">123秒传 · 仅供学习交流使用</div>
+</div>
+
+<!-- ==================== 主页 ==================== -->
+<div id="page-home" class="page">
+  <!-- 导航栏 -->
+  <div class="home-nav">
+    <div class="home-nav-title">
+      <div class="nav-logo">🚀</div>
+      <span>123秒传</span>
+      <span id="nav-mode-badge" style="font-size:11px;background:rgba(255,255,255,0.25);padding:2px 7px;border-radius:10px;display:none;"></span>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-user">—</span>
+      <button class="nav-logout" onclick="logout()">退出</button>
+    </div>
+  </div>
+
+  <!-- Tab切换 -->
+  <div class="tabs">
+    <div class="tab active" data-tab="cloud" onclick="switchTab('cloud')">☁️ 网盘文件</div>
+    <div class="tab" data-tab="save" onclick="switchTab('save')">📥 保存秒传</div>
+    <div class="tab" data-tab="batch" onclick="switchTab('batch')">📦 批量生成</div>
+    <div class="tab" data-tab="share" onclick="switchTab('share')">🔗 分享解析</div>
+  </div>
+
+  <!-- ===== 网盘文件 ===== -->
+  <div id="tab-cloud" class="tab-content active">
+    <div class="card">
+      <div class="sec-title">📂 从网盘选择文件</div>
+
+      <div class="sel-info" id="sel-info">
+        <div class="sel-info-row">
+          <div class="sel-info-icon">📄</div>
+          <div style="flex:1;min-width:0;">
+            <div class="sel-info-name" id="sel-name">—</div>
+            <div class="sel-info-meta" id="sel-meta">—</div>
+          </div>
+          <button class="sel-info-remove" onclick="clearSelection()">×</button>
+        </div>
+      </div>
+
+      <div class="search-row">
+        <input type="text" id="inp-search" placeholder="搜索文件名..." oninput="doSearch(this.value)">
+        <button class="btn btn-outline btn-sm" onclick="goHome()">🏠</button>
+        <button class="btn btn-outline btn-sm" onclick="refreshList()">🔄</button>
+      </div>
+
+      <div class="crumb-bar" id="crumb-bar"></div>
+      <div class="file-list" id="file-list">
+        <div class="loading" id="list-loading">
+          <div class="spin dark" style="margin:0 auto 8px;"></div>
+          加载中...
+        </div>
+      </div>
+
+      <div class="result-box" id="cloud-result">
+        <div class="result-label">✅ 秒传链接</div>
+        <a class="result-link" id="cloud-link" href="#" onclick="event.preventDefault()">—</a>
+        <div class="result-chips" id="cloud-chips"></div>
+        <div class="btn-row mt-10">
+          <button class="btn btn-primary btn-sm btn-full" onclick="copyLink('cloud')">📋 复制链接</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full mt-10" id="btn-gen-cloud" onclick="genFromCloud()" disabled>
+        <span id="btn-gen-cloud-text">⚡ 生成秒传</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== 保存秒传 ===== -->
+  <div id="tab-save" class="tab-content">
+    <div class="card">
+      <div class="sec-title">🔗 保存秒传链接</div>
+      <div class="json-tip">💡 支持：秒传链接、脚本JSON导出、123云盘分享链接</div>
+      <div class="input-group">
+        <textarea id="inp-save" placeholder="粘贴秒传链接或JSON内容...
+
+格式：
+① 123FLCPV2$etag#size#filename
+② etag#size#filename
+③ 脚本导出完整JSON"></textarea>
+      </div>
+
+      <div class="prog" id="save-prog">
+        <div class="prog-text">
+          <span id="save-status">保存中...</span>
+          <span id="save-pct">0%</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" id="save-fill"></div></div>
+      </div>
+
+      <div class="result-box" id="save-result">
+        <div class="save-stats" id="save-stats"></div>
+        <div class="btn-row mt-10">
+          <button class="btn btn-outline btn-sm" onclick="copyLink('save')">📋 复制失败项</button>
+          <button class="btn btn-outline btn-sm" onclick="retryFail()">🔄 重试</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full mt-10" id="btn-save" onclick="doSave()">
+        <span id="btn-save-text">⚡ 开始保存</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== 批量生成 ===== -->
+  <div id="tab-batch" class="tab-content">
+    <div class="card">
+      <div class="sec-title">📦 批量生成秒传 + ZIP打包</div>
+
+      <!-- 目录选择说明 -->
+      <div class="dir-select-tip" id="batch-tip">
+        ⚠️ 请先在「☁️ 网盘文件」标签页进入一个文件夹，再切换到此页面进行批量生成
+      </div>
+
+      <!-- 批量状态卡 -->
+      <div class="batch-info" id="batch-info" style="display:none;">
+        <div class="batch-stat-row">
+          <span class="batch-stat-label">📁 当前目录</span>
+          <span class="batch-stat-val" id="batch-cur-dir" style="font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
+        </div>
+        <div class="batch-stat-row">
+          <span class="batch-stat-label">📊 总文件数</span>
+          <span class="batch-stat-val" id="batch-total">0</span>
+        </div>
+        <div class="batch-stat-row">
+          <span class="batch-stat-label">✅ 已完成</span>
+          <span class="batch-stat-val" id="batch-done">0</span>
+        </div>
+        <div class="batch-stat-row">
+          <span class="batch-stat-label">⏳ 进度</span>
+          <span class="batch-stat-val" id="batch-pct">0%</span>
+        </div>
+      </div>
+
+      <!-- 进度条 -->
+      <div class="prog" id="batch-prog">
+        <div class="prog-text">
+          <span id="batch-status">扫描目录中...</span>
+          <span id="batch-pct-bar">0%</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill purple" id="batch-fill"></div></div>
+      </div>
+
+      <!-- 日志 -->
+      <div class="batch-log" id="batch-log"></div>
+
+      <!-- 操作按钮 -->
+      <div id="batch-actions">
+        <button class="btn btn-purple btn-full mt-10" id="btn-batch-start" onclick="batchStart()">
+          <span id="btn-batch-text">⚡ 开始批量生成</span>
+        </button>
+      </div>
+
+      <!-- 下载框 -->
+      <div class="download-box" id="batch-download">
+        <div class="dl-icon">📦</div>
+        <div class="dl-title">ZIP 打包完成！</div>
+        <div class="dl-sub" id="batch-dl-info">共 0 个文件</div>
+        <button class="btn btn-primary btn-full" onclick="downloadBatchZip()">⬇️ 下载 ZIP</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 分享解析 ===== -->
+  <div id="tab-share" class="tab-content">
+    <div class="card">
+      <div class="sec-title">🔗 分享链接 → 秒传ZIP</div>
+
+      <div class="input-group">
+        <label>123云盘分享链接</label>
+        <input type="text" id="inp-share-url" placeholder="123云盘分享链接，支持多种域名和?pwd=格式">
+      </div>
+      <div class="input-group">
+        <label>分享密码（如果没有则留空）</label>
+        <input type="text" id="inp-share-pwd" placeholder="请输入4位分享密码">
+      </div>
+
+      <div class="prog" id="share-prog">
+        <div class="prog-text">
+          <span id="share-status">解析分享中...</span>
+          <span id="share-pct">0%</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill purple" id="share-fill"></div></div>
+      </div>
+
+      <!-- 分享文件预览 -->
+      <div class="share-result" id="share-result">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;">📋 分享文件列表 (<span id="share-count">0</span> 个文件)</div>
+        <div id="share-file-list" style="max-height:200px;overflow-y:auto;"></div>
+      </div>
+
+      <button class="btn btn-purple btn-full mt-10" id="btn-share-gen" onclick="shareGen()">
+        <span id="btn-share-text">⚡ 解析并生成秒传</span>
+      </button>
+
+      <!-- 下载框 -->
+      <div class="download-box" id="share-download">
+        <div class="dl-icon">📦</div>
+        <div class="dl-title">ZIP 打包完成！</div>
+        <div class="dl-sub" id="share-dl-info">共 0 个文件</div>
+        <button class="btn btn-purple btn-full" onclick="downloadShareZip()">⬇️ 下载 ZIP</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:0;">
+      <div class="sec-title">💡 使用说明</div>
+      <div class="json-tip" style="margin-bottom:8px;">支持解析 123云盘 分享链接，自动获取分享内的文件列表，逐个生成秒传链接，并按原目录结构打包成 ZIP 文件下载。</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// ===== 全局状态 =====
+// ============================================================
+const S = {
+  officialToken: localStorage.getItem('t') || '',
+  officialUser: localStorage.getItem('u') || '',
+  officialPwd: localStorage.getItem('p') || '',
+
+  files: [],
+  curDir: '0',
+  stack: [{ id: '0', n: '全部文件' }],
+  sel: null,
+  failList: [],
+
+  batchDirId: null,
+  batchDirPath: null,
+  batchResults: [],
+  batchZipBlob: null,
+  batchTotal: 0,
+  batchDone: 0,
+  batchRunning: false,
+
+  shareList: [],
+  shareZipBlob: null,
+};
+
+const OFFICIAL_API = { login: 'https://login.123pan.com/api/user/sign_in', base: 'https://www.123pan.com' };
+
+// ============================================================
+// ===== 页面初始化 =====
+// ============================================================
+(function init() {
+  if (S.officialToken) {
+    showPage('home');
+    document.getElementById('nav-user').textContent = S.officialUser || '用户';
+  } else {
+    showPage('login');
+  }
+
+  if (S.officialUser) document.getElementById('inp-user').value = S.officialUser;
+  if (S.officialPwd) document.getElementById('inp-pwd').value = S.officialPwd;
+
+  document.getElementById('inp-pwd').addEventListener('keydown', e => { if (e.key === 'Enter') doLoginOfficial(); });
+})();
+
+function showPage(n) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + n).classList.add('active');
+}
+
+// ============================================================
+function showPage(n) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + n).classList.add('active');
+}
+
+// ============================================================
+// ===== Toast =====
+// ============================================================
+let _tt;
+function toast(m, t = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = m; el.className = 'toast ' + t + ' show';
+  clearTimeout(_tt); _tt = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ============================================================
+// ===== 官方账号登录 =====
+// ============================================================
+function doLoginOfficial() {
+  const user = document.getElementById('inp-user').value.trim();
+  const pwd = document.getElementById('inp-pwd').value;
+  const rem = document.getElementById('chk-remember').checked;
+  if (!user || !pwd) { toast('请输入账号和密码', 'error'); return; }
+  const btn = document.getElementById('btn-login');
+  const btnT = document.getElementById('btn-login-text');
+  btn.disabled = true; btnT.innerHTML = '<span class="spin"></span> 登录中...';
+
+  fetch(OFFICIAL_API.login, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json;charset=UTF-8', 'Origin': OFFICIAL_API.base, 'Referer': OFFICIAL_API.base + '/', 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15', 'platform': 'web', 'app-version': '3' },
+    body: JSON.stringify(user.includes('@') ? { mail: user, password: pwd, type: 2 } : { passport: user, password: pwd, remember: rem })
+  }).then(r => r.json()).then(d => {
+    if (d.code === 200 && d.data?.token) {
+      S.officialToken = d.data.token; S.officialUser = user;
+      localStorage.setItem('t', S.officialToken); localStorage.setItem('u', S.officialUser);
+      if (rem) { S.officialPwd = pwd; localStorage.setItem('p', pwd); } else { localStorage.removeItem('p'); S.officialPwd = ''; }
+      document.getElementById('nav-user').textContent = user;
+      document.getElementById('nav-mode-badge').style.display = 'none';
+      toast('登录成功！', 'success');
+      setTimeout(() => showPage('home'), 350);
+    } else { toast(d.message || '登录失败，请检查账号密码', 'error'); }
+  }).catch(() => toast('网络异常，请检查网络', 'error')).finally(() => { btn.disabled = false; btnT.textContent = '登录 123云盘'; });
+}
+
+// ============================================================
+// ===== OpenList 服务器登录 =====
+// ============================================================
+async function doLoginOpen() {
+  const serverUrl = document.getElementById('inp-openlist-url').value.trim().replace(/\/$/, '');
+  const accessToken = document.getElementById('inp-openlist-token').value.trim();
+  const refreshToken = document.getElementById('inp-refresh-token').value.trim();
+
+  if (!serverUrl || !accessToken) {
+    toast('请填写服务器地址和访问令牌', 'error'); return;
+  }
+
+  const btn = document.getElementById('btn-login-open');
+  const btnT = document.getElementById('btn-login-open-text');
+  btn.disabled = true; btnT.innerHTML = '<span class="spin"></span> 连接中...';
+
+  try {
+    S.openListUrl = serverUrl;
+    S.openListToken = accessToken;
+    S.openRefreshToken = refreshToken;
+
+    localStorage.setItem('openListUrl', serverUrl);
+    localStorage.setItem('openListToken', accessToken);
+    if (refreshToken) localStorage.setItem('openRefreshToken', refreshToken);
+
+    const d = await openApi('/api/user/info');
+    const displayName = d?.data?.name || d?.data?.username || d?.data?.nickname || 'OpenList';
+    S.openUsername = displayName;
+    localStorage.setItem('openUsername', displayName);
+
+    document.getElementById('nav-user').textContent = displayName;
+    document.getElementById('nav-mode-badge').textContent = '🔗 OPEN';
+    document.getElementById('nav-mode-badge').style.display = 'inline';
+    toast('连接成功！', 'success');
+    setTimeout(() => showPage('home'), 350);
+  } catch (e) {
+    if (e.message === 'Failed to fetch' || e.message.includes('NetworkError') || e.message.includes('net::')) {
+      toast('网络异常，请检查网络连接', 'error');
+    } else {
+      toast('连接失败：' + (e.message || '未知错误'), 'error');
+    }
+  } finally {
+    btn.disabled = false; btnT.textContent = '连接 OpenList';
+  }
+}
+
+// ============================================================
+// ===== 登出 =====
+// ============================================================
+function logout() {
+  if (!confirm('确定退出登录？')) return;
+  localStorage.removeItem('t'); localStorage.removeItem('u'); localStorage.removeItem('p');
+  localStorage.removeItem('openListUrl'); localStorage.removeItem('openListToken');
+  localStorage.removeItem('openRefreshToken'); localStorage.removeItem('openUsername');
+  S.officialToken = ''; S.officialUser = ''; S.officialPwd = '';
+  S.openListUrl = ''; S.openListToken = '';
+  S.openRefreshToken = ''; S.openUsername = '';
+  S.files = []; S.sel = null;
+  document.getElementById('inp-user').value = '';
+  document.getElementById('inp-pwd').value = '';
+  document.getElementById('inp-openlist-url').value = '';
+  document.getElementById('inp-openlist-token').value = '';
+  document.getElementById('inp-refresh-token').value = '';
+  showPage('login'); toast('已退出', 'info');
+}
+
+// ============================================================
+// ===== Tab 切换 =====
+// ============================================================
+function switchTab(n) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tab[data-tab="' + n + '"]').classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + n).classList.add('active');
+
+  if (n === 'cloud' && S.files.length === 0) loadDir('0');
+  if (n === 'batch') updateBatchUI();
+}
+
+// ============================================================
+// ===== 开放平台 API 请求 =====
+// ============================================================
+async function openApi(path, method = 'POST', body = {}) {
+  const url = S.openListUrl + path;
+  const options = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + S.openListToken },
+    body: method !== 'GET' ? JSON.stringify(body) : undefined
+  };
+  const r = await fetch(url, options);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const d = await r.json();
+  if (d.error) throw new Error(d.error);
+  return d;
+}
+
+// ============================================================
+// ===== 文件列表加载 =====
+// ============================================================
+async function loadDir(parentId) {
+  const listEl = document.getElementById('file-list');
+  listEl.innerHTML = '<div class="loading"><div class="spin dark" style="margin:0 auto 8px;"></div>加载中...</div>';
+  document.getElementById('cloud-result').classList.remove('show');
+  document.getElementById('sel-info').classList.remove('show');
+  S.sel = null;
+  document.getElementById('btn-gen-cloud').disabled = true;
+
+  if (parentId === '0') { S.stack = [{ id: '0', n: '全部文件' }]; S.curDir = '0'; }
+  else {
+    const ei = S.stack.findIndex(x => x.id === parentId);
+    if (ei !== -1) S.stack = S.stack.slice(0, ei + 1);
+    else S.stack.push({ id: parentId, n: '…' });
+  }
+  S.curDir = parentId;
+  renderCrumb();
+
+  try {
+    let all = [];
+    if (S.officialToken) {
+      all = await loadDirOfficial(parentId);
+    } else {
+      throw new Error('未登录');
+    }
+    S.files = all; renderFiles(all);
+  } catch (e) {
+    if (e !== 'E') listEl.innerHTML = '<div class="file-empty">加载失败: ' + esc(String(e.message)) + '</div>';
+  }
+}
+
+async function loadDirOfficial(parentId) {
+  let page = 1, all = [];
+  while (true) {
+    const d = await apiOfficial('GET', '/b/api/file/list/new', null, {
+      driveId: '0', limit: '100', next: '0', orderBy: 'file_id', orderDirection: 'desc',
+      parentFileId: parentId, trashed: 'false', SearchData: '', Page: String(page),
+      OnlyLookAbnormalFile: '0', event: 'homeListFile', operateType: '4', inDirectSpace: 'false'
+    });
+    const fs = d?.data?.InfoList || [];
+    all = all.concat(fs);
+    if (fs.length < 100 || d?.data?.Next === '-1') break;
+    page++; if (page > 30) break;
+  }
+  return all;
+}
+
+async function loadDirOpen(parentId) {
+  let page = 1, all = [];
+  while (true) {
+    try {
+      const d = await openApi('/api/fs/list', 'POST', {
+        path: parentId === '0' ? '/' : '/' + parentId,
+        page: page, per_page: 100, password: '', refresh: false
+      });
+      const fs = d?.data?.content || d?.data?.files || d?.data || [];
+      if (fs.length === 0) break;
+      const items = fs.map(f => ({
+        FileId: String(f.id || f.file_id || f.FileId || ''),
+        FileName: f.name || f.file_name || f.FileName || '未知',
+        Size: f.size || f.Size || 0,
+        Type: (f.type === 1 || f.IsDir || f.type === 'dir') ? 1 : 0,
+        Etag: f.etag || f.Etag || f.sha1 || '',
+        ParentPath: f.parent || f.parent_path || (parentId === '0' ? '/' : '/' + parentId)
+      }));
+      all = all.concat(items);
+      const total = d?.data?.total || d?.total || 0;
+      if (items.length < 100 || (total > 0 && all.length >= total)) break;
+      page++; if (page > 50) break;
+    } catch (e) { break; }
+  }
+  return all;
+}
+
+async function collectAllFilesOpen(dirId, basePath = '') {
+  const files = [];
+  const dirs = [];
+  let page = 1;
+  while (true) {
+    let fs = [];
+    try {
+      const d = await openApi('/api/fs/list', 'POST', {
+        path: dirId === '0' ? '/' : '/' + dirId,
+        page: page, per_page: 100, password: '', refresh: false
+      });
+      fs = d?.data?.content || d?.data?.files || d?.data || [];
+      if (fs.length === 0) break;
+      for (const f of fs) {
+        const isDir = f.type === 1 || f.IsDir || f.type === 'dir';
+        const fileName = f.name || f.file_name || f.FileName || '未知';
+        const fileId = String(f.id || f.file_id || f.FileId || '');
+        const fullPath = (basePath ? basePath + '/' : '') + fileName;
+        if (isDir) {
+          dirs.push({ id: fileId, path: fullPath });
+        } else {
+          files.push({
+            FileId: fileId, FileName: fileName,
+            Size: f.size || f.Size || 0,
+            Etag: f.etag || f.Etag || f.sha1 || '',
+            relativePath: fullPath
+          });
+        }
+      }
+      const total = d?.data?.total || d?.total || 0;
+      if (fs.length < 100 || (total > 0 && files.length + dirs.length >= total)) break;
+      page++;
+    } catch (e) { break; }
+    if (page > 50) break;
+  }
+  for (const d of dirs) {
+    try {
+      const sub = await collectAllFilesOpen(d.id, d.path);
+      files.push(...sub);
+    } catch (e) {}
+  }
+  return files;
+}
+
+async function apiOfficial(method, path, body, params) {
+  let url = buildUrl(path);
+  if (params) { const qs = new URLSearchParams(params).toString(); url = path + '?' + qs + '&' + signP(path); }
+  const r = await fetch(OFFICIAL_API.base + url, {
+    method,
+    headers: { 'Content-Type': 'application/json;charset=UTF-8', 'Authorization': 'Bearer ' + S.officialToken, 'Origin': OFFICIAL_API.base, 'Referer': OFFICIAL_API.base + '/', 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15', 'platform': 'web', 'app-version': '3' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const d = await r.json();
+  if (d.code === 401) { toast('登录已过期', 'error'); logout(); throw 'E'; }
+  if (d.code !== 0) throw new Error(d.message || '请求失败');
+  return d;
+}
+
+// ============================================================
+// ===== CRC32 签名 =====
+// ============================================================
+function crc32(d) {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) { let c = i; for (let j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[i] = c; }
+  let r = 0xFFFFFFFF;
+  for (let i = 0; i < d.length; i++) r = t[(r ^ d.charCodeAt(i)) & 0xFF] ^ (r >>> 8);
+  return (r ^ 0xFFFFFFFF) >>> 0;
+}
+function signP(p) {
+  const T = 'adefghlimjnoopkqrstubcvwsz';
+  const rnd = String(Math.round(1e7 * Math.random()));
+  const now = new Date();
+  const cst = new Date(now.getTime() + (8 * 60 - now.getTimezoneOffset()) * 60000);
+  const ts = String(cst.getTime() / 1000);
+  const ds = cst.toISOString().replace(/[-:T]/g, '').slice(0, 12);
+  const mp = ds.split('').map(c => T[parseInt(c)] || c).join('');
+  const tsgn = String(crc32(mp));
+  const dat = [ts, rnd, p, 'web', '3', tsgn].join('|');
+  return tsgn + '=' + ts + '-' + rnd + '-' + String(crc32(dat));
+}
+function buildUrl(p) { return p + '?' + signP(p); }
+
+// ============================================================
+// ===== 渲染文件列表 =====
+// ============================================================
+function renderCrumb() {
+  const el = document.getElementById('crumb-bar');
+  el.innerHTML = S.stack.map((d, i) =>
+    '<span class="crumb" onclick="loadDir(\'' + d.id + '\')">' + esc(d.n) + '</span>' +
+    (i < S.stack.length - 1 ? '<span class="crumb-arrow">›</span>' : '')
+  ).join('');
+}
+
+function renderFiles(fs) {
+  const listEl = document.getElementById('file-list');
+  if (fs.length === 0) { listEl.innerHTML = '<div class="file-empty">📭 此目录为空</div>'; return; }
+  listEl.innerHTML = fs.map(f => {
+    const isDir = f.Type === 1 || f.type === 1 || f.IsDir;
+    const icon = isDir ? '📁' : '📄';
+    const sel = S.sel?.fileId === f.FileId;
+    return '<div class="file-item' + (sel ? ' selected' : '') + '" data-id="' + f.FileId + '" data-name="' + esc(f.FileName) + '" data-size="' + f.Size + '" data-etag="' + esc(f.Etag || '') + '" data-type="' + f.Type + '" data-path="' + esc(f.ParentPath || '') + '" onclick="onItemClick(event,this)">' +
+      '<div class="file-item-icon">' + icon + '</div>' +
+      '<div class="file-item-info">' +
+        '<div class="file-item-name">' + esc(f.FileName) + '</div>' +
+        '<div class="file-item-meta">' + (isDir ? '文件夹' : fmtSize(f.Size)) + '</div>' +
+      '</div>' +
+      '<button class="file-item-btn" onclick="event.stopPropagation();pickItem(this)">' + (sel ? '✓ 已选' : '选择') + '</button>' +
+    '</div>';
+  }).join('');
+}
+
+function onItemClick(e, el) {
+  if (el.dataset.type === '1') { loadDir(el.dataset.id); }
+}
+
+function pickItem(btn) {
+  const el = btn.closest('.file-item');
+  if (el.dataset.type === '1') { toast('请选择文件', 'error'); return; }
+  const isSel = S.sel?.fileId === el.dataset.id;
+  document.querySelectorAll('.file-item').forEach(it => { it.classList.remove('selected'); it.querySelector('.file-item-btn').textContent = '选择'; });
+  if (!isSel) {
+    el.classList.add('selected'); btn.textContent = '✓ 已选';
+    S.sel = { fileId: el.dataset.id, fileName: el.dataset.name, size: parseInt(el.dataset.size) || 0, etag: el.dataset.etag, path: el.dataset.path };
+    document.getElementById('sel-name').textContent = S.sel.fileName;
+    document.getElementById('sel-meta').textContent = fmtSize(S.sel.size);
+    document.getElementById('sel-info').classList.add('show');
+    document.getElementById('cloud-result').classList.remove('show');
+    document.getElementById('btn-gen-cloud').disabled = false;
+  } else {
+    S.sel = null;
+    document.getElementById('sel-info').classList.remove('show');
+    document.getElementById('btn-gen-cloud').disabled = true;
+  }
+}
+
+function clearSelection() {
+  S.sel = null;
+  document.querySelectorAll('.file-item').forEach(it => { it.classList.remove('selected'); it.querySelector('.file-item-btn').textContent = '选择'; });
+  document.getElementById('sel-info').classList.remove('show');
+  document.getElementById('cloud-result').classList.remove('show');
+  document.getElementById('btn-gen-cloud').disabled = true;
+}
+
+function goHome() { loadDir('0'); }
+function refreshList() { loadDir(S.curDir); }
+
+function doSearch(kw) {
+  if (!kw.trim()) { renderFiles(S.files); return; }
+  const k = kw.toLowerCase();
+  renderFiles(S.files.filter(f => f.FileName.toLowerCase().includes(k)));
+}
+
+// ============================================================
+// ===== 生成秒传 =====
+// ============================================================
+async function genFromCloud() {
+  if (!S.sel) { toast('请先选择一个文件', 'error'); return; }
+  const btn = document.getElementById('btn-gen-cloud');
+  btn.disabled = true; document.getElementById('btn-gen-cloud-text').innerHTML = '<span class="spin"></span> 生成中...';
+  try {
+    let link = '';
+    if (S.officialToken) {
+      link = await genFastlinkOfficial(S.sel);
+    } else {
+      throw new Error('未登录');
+    }
+    if (!link) return;
+    document.getElementById('cloud-link').textContent = link;
+    document.getElementById('cloud-chips').innerHTML = '<span class="chip">📦 ' + fmtSize(S.sel.size) + '</span><span class="chip">📄 ' + esc(S.sel.fileName) + '</span>';
+    document.getElementById('cloud-result').classList.add('show');
+    toast('生成成功！', 'success');
+  } catch (e) { if (e !== 'E') toast('生成失败: ' + e.message, 'error'); }
+  finally { btn.disabled = false; document.getElementById('btn-gen-cloud-text').textContent = '⚡ 生成秒传'; }
+}
+
+async function genFastlinkOfficial(file) {
+  const etag = file.Etag || file.etag || '';
+  const fileName = file.FileName || file.fileName || file.name || '未知文件';
+  const size = file.Size || file.size || 0;
+
+  if (!etag) { toast('该文件没有etag，无法生成秒传', 'error'); return ''; }
+  return '123FLCPV2$' + etag + '#' + size + '#' + fileName.replace(/[%#$]/g, '');
+}
+
+async function genFastlinkOpen(file) {
+  const fileId = file.FileId || file.fileId || '';
+  const etag = file.Etag || file.etag || '';
+  const fileName = file.FileName || file.fileName || file.name || '未知文件';
+  const size = file.Size || file.size || 0;
+
+  if (!fileId) { toast('文件 ID 不存在', 'error'); return ''; }
+
+  try {
+    const d = await openApi('/api/fs/fastlink', 'POST', {
+      file_id: fileId, etag: etag, size: size, name: fileName
+    });
+    if (d?.data?.fastlink) return d.data.fastlink;
+    if (d?.data?.link) return d.data.link;
+    if (d?.data) return d.data;
+  } catch (e) {}
+
+  if (etag && size > 0) {
+    return '123FLCPV2$' + etag + '#' + size + '#' + fileName.replace(/[%#$]/g, '');
+  }
+
+  toast('无法生成秒传，请检查文件是否可访问', 'error');
+  return '';
+}
+
+// ============================================================
+// ===== 批量生成 =====
+// ============================================================
+function updateBatchUI() {
+  const curDirData = S.curDir !== '0' ? S.files.find(f => String(f.FileId) === String(S.curDir)) : null;
+  const hasDir = S.curDir !== '0';
+
+  document.getElementById('batch-tip').style.display = hasDir ? 'none' : 'block';
+  document.getElementById('batch-info').style.display = hasDir ? 'block' : 'none';
+
+  if (hasDir) {
+    const dirName = curDirData?.FileName || S.stack[S.stack.length - 1]?.n || '当前目录';
+    document.getElementById('batch-cur-dir').textContent = dirName;
+    document.getElementById('batch-cur-dir').title = dirName;
+  }
+
+  document.getElementById('batch-download').classList.remove('show');
+  document.getElementById('batch-actions').style.display = S.batchRunning ? 'none' : (hasDir ? 'block' : 'none');
+}
+
+async function batchStart() {
+  if (S.batchRunning) return;
+  const dirId = S.curDir;
+  if (dirId === '0') { toast('请先在「☁️ 网盘文件」标签页进入一个文件夹', 'error'); return; }
+
+  S.batchRunning = true;
+  S.batchResults = [];
+  S.batchZipBlob = null;
+  S.batchTotal = 0;
+  S.batchDone = 0;
+  document.getElementById('batch-actions').style.display = 'none';
+  document.getElementById('batch-download').classList.remove('show');
+  document.getElementById('batch-log').classList.add('show');
+  document.getElementById('batch-log').textContent = '';
+  document.getElementById('batch-prog').classList.add('show');
+
+  batchLog('🚀 开始扫描目录...');
+  document.getElementById('batch-status').textContent = '扫描目录中...';
+  document.getElementById('batch-fill').style.width = '0%';
+
+  try {
+    const curDirName = S.curDir !== '0' ? (S.stack[S.stack.length - 1]?.n || '') : '';
+    const allFiles = await collectAllFiles(dirId, curDirName);
+    S.batchTotal = allFiles.length;
+    document.getElementById('batch-total').textContent = allFiles.length;
+    document.getElementById('batch-done').textContent = '0';
+    document.getElementById('batch-pct').textContent = '0%';
+
+    if (allFiles.length === 0) {
+      batchLog('⚠️ 目录下没有文件');
+      toast('目录下没有文件', 'warn');
+      finishBatch();
+      return;
+    }
+
+    batchLog('📊 共发现 ' + allFiles.length + ' 个文件，开始生成秒传...\n');
+
+    for (let i = 0; i < allFiles.length; i++) {
+      const f = allFiles[i];
+      const pct = Math.round((i + 1) / allFiles.length * 100);
+      document.getElementById('batch-done').textContent = i + 1;
+      document.getElementById('batch-pct').textContent = pct + '%';
+      document.getElementById('batch-pct-bar').textContent = pct + '%';
+      document.getElementById('batch-fill').style.width = pct + '%';
+      document.getElementById('batch-status').textContent = '生成 ' + (i + 1) + '/' + allFiles.length;
+
+      try {
+        let link = '';
+        if (S.officialToken) {
+          link = await genFastlinkOfficial(f);
+        }
+        if (link) {
+          S.batchResults.push({ path: f.relativePath, fastlink: link, success: true });
+          batchLog('✅ ' + f.relativePath);
+        } else {
+          S.batchResults.push({ path: f.relativePath, fastlink: '', success: false, error: '生成失败' });
+          batchLog('❌ ' + f.relativePath + ' (无秒传)');
+        }
+      } catch (e) {
+        S.batchResults.push({ path: f.relativePath, fastlink: '', success: false, error: e.message });
+        batchLog('❌ ' + f.relativePath + ' (' + e.message + ')');
+      }
+
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    batchLog('\n📦 正在打包 ZIP...');
+    document.getElementById('batch-status').textContent = '打包ZIP中...';
+    await makeBatchZip();
+    batchLog('✅ ZIP 打包完成！');
+
+    const okCount = S.batchResults.filter(r => r.success).length;
+    const failCount = S.batchResults.filter(r => !r.success).length;
+    document.getElementById('batch-dl-info').textContent = '共 ' + okCount + ' 个成功，' + failCount + ' 个失败';
+    document.getElementById('batch-download').classList.add('show');
+    toast('批量完成：' + okCount + ' 成功，' + failCount + ' 失败', failCount > okCount / 2 ? 'warn' : 'success');
+
+  } catch (e) {
+    batchLog('💥 发生错误：' + e.message);
+    toast('批量生成失败：' + e.message, 'error');
+  }
+
+  finishBatch();
+}
+
+function batchLog(msg) {
+  const el = document.getElementById('batch-log');
+  el.textContent += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+function finishBatch() {
+  S.batchRunning = false;
+  document.getElementById('batch-prog').classList.remove('show');
+  document.getElementById('batch-actions').style.display = S.curDir !== '0' ? 'block' : 'none';
+}
+
+async function collectAllFiles(dirId, basePath = '') {
+  const files = [];
+  const dirs = [];
+
+  let page = 1;
+  let allFiles = [];
+
+  if (S.officialToken) {
+    while (true) {
+      try {
+        const d = await apiOfficial('GET', '/b/api/file/list/new', null, {
+          driveId: '0', limit: '100', next: '0', orderBy: 'file_id', orderDirection: 'desc',
+          parentFileId: dirId, trashed: 'false', SearchData: '', Page: String(page),
+          OnlyLookAbnormalFile: '0', event: 'homeListFile', operateType: '4', inDirectSpace: 'false'
+        });
+        const fs = d?.data?.InfoList || [];
+        allFiles = allFiles.concat(fs.map(f => ({
+          FileId: f.FileId, FileName: f.FileName, Size: f.Size, Type: f.Type, Etag: f.Etag || ''
+        })));
+        if (fs.length < 100) break;
+      } catch (e) { break; }
+      page++; if (page > 30) break;
+    }
+  }
+
+  for (const f of allFiles) {
+    if (f.Type === 1) {
+      const subDirPath = basePath ? basePath + '/' + f.FileName : f.FileName;
+      dirs.push({ id: f.FileId, name: f.FileName, path: subDirPath });
+    } else {
+      const filePath = basePath ? basePath + '/' + f.FileName : f.FileName;
+      files.push({
+        fileId: f.FileId, fileName: f.FileName,
+        size: f.Size || 0,
+        etag: f.Etag || '',
+        relativePath: filePath
+      });
+    }
+  }
+
+  for (const d of dirs) {
+    const subFiles = await collectAllFiles(d.id, d.path);
+    files.push(...subFiles);
+  }
+  return files;
+}
+
+async function makeBatchZip() {
+  const zip = new JSZip();
+  const folderName = new Date().toISOString().slice(0,10).replace(/-/g,'') + '_batch';
+  const folder = zip.folder('秒传备份_' + folderName);
+
+  for (const item of S.batchResults) {
+    if (item.success) {
+      const pathParts = item.path.split('/');
+      const fileName = pathParts.pop();
+      let cur = folder;
+      for (const part of pathParts) {
+        if (part) cur = cur.folder(part) || cur;
+      }
+      cur.file(fileName + '.json', item.fastlink);
+    }
+  }
+
+  const stats = S.batchResults.reduce((acc, r) => {
+    if (r.success) acc.ok++; else acc.fail++;
+    return acc;
+  }, { ok: 0, fail: 0 });
+
+  folder.file('说明.txt',
+    '123秒传 批量生成\n' +
+    '生成时间：' + new Date().toLocaleString('zh-CN') + '\n' +
+    '成功：' + stats.ok + ' 个\n' +
+    '失败：' + stats.fail + ' 个\n' +
+    '说明：每个 .json 文件对应原文件，文件名为"原文件名.json"，内容为秒传链接\n'
+  );
+
+  S.batchZipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+}
+
+function downloadBatchZip() {
+  if (!S.batchZipBlob) { toast('ZIP 未就绪', 'error'); return; }
+  const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  saveAs(S.batchZipBlob, '秒传备份_' + timestamp + '.zip');
+  toast('下载开始！', 'success');
+}
+
+// ============================================================
+// ===== 分享解析 =====
+// ============================================================
+async function shareGen() {
+  const shareUrl = document.getElementById('inp-share-url').value.trim();
+  const sharePwd = document.getElementById('inp-share-pwd').value.trim();
+
+  if (!shareUrl) { toast('请输入分享链接', 'error'); return; }
+
+  let shareCode = '';
+  let extractedPwd = '';
+
+  try {
+    const urlObj = new URL(shareUrl.startsWith('http') ? shareUrl : 'https://' + shareUrl);
+    if (urlObj.searchParams.has('pwd')) {
+      extractedPwd = urlObj.searchParams.get('pwd');
+    }
+  } catch (e) {}
+
+  const finalPwd = extractedPwd || sharePwd;
+
+  const domainMatch = shareUrl.match(/https?:\/\/[^/]+\/s\/([^?\s]+)/);
+  if (domainMatch) {
+    shareCode = domainMatch[1];
+  } else if (shareUrl.length > 4 && shareUrl.length < 50) {
+    shareCode = shareUrl.trim();
+  } else {
+    toast('请输入有效的分享链接或分享码', 'error'); return;
+  }
+
+  const btn = document.getElementById('btn-share-gen');
+  btn.disabled = true; document.getElementById('btn-share-text').innerHTML = '<span class="spin"></span> 解析中...';
+  document.getElementById('share-prog').classList.add('show');
+  document.getElementById('share-result').classList.remove('show');
+  document.getElementById('share-download').classList.remove('show');
+  document.getElementById('share-fill').style.width = '0%';
+
+  try {
+    shareData = await parseShareOfficial(shareCode, finalPwd);
+
+    if (!shareData || shareData.length === 0) {
+      toast('未获取到分享文件列表，请确认链接有效', 'warn');
+      return;
+    }
+
+    S.shareList = shareData;
+    document.getElementById('share-count').textContent = shareData.length;
+
+    const listEl = document.getElementById('share-file-list');
+    listEl.innerHTML = shareData.slice(0, 50).map(f =>
+      '<div class="share-file-item">' +
+        '<span class="share-file-icon">📄</span>' +
+        '<span class="share-file-name" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+        '<span class="share-file-size">' + fmtSize(f.size || 0) + '</span>' +
+      '</div>'
+    ).join('') + (shareData.length > 50 ? '<div style="text-align:center;color:var(--sub);font-size:12px;padding:8px;">还有 ' + (shareData.length - 50) + ' 个文件...</div>' : '');
+    document.getElementById('share-result').classList.add('show');
+
+    toast('解析成功，共 ' + shareData.length + ' 个文件', 'success');
+
+    await generateShareFastlinks(shareData);
+
+  } catch (e) {
+    toast('解析失败：' + e.message, 'error');
+  } finally {
+    btn.disabled = false; document.getElementById('btn-share-text').textContent = '⚡ 解析并生成秒传';
+    document.getElementById('share-prog').classList.remove('show');
+  }
+}
+
+async function parseShareOfficial(shareCode, password) {
+  if (!S.officialToken) {
+    throw new Error('请先登录123云盘账号，再使用分享解析功能');
+  }
+  const result = [];
+  await fetchShareDirRecursive(shareCode, password, '', '0', result);
+  if (result.length === 0) throw new Error('分享为空或链接无效');
+  return result;
+}
+
+async function fetchShareDirRecursive(shareCode, password, parentName, parentFileId, result) {
+  let page = 1;
+  while (true) {
+    const path = '/b/api/share/get';
+    const sign = signP(path);
+    const params = new URLSearchParams({
+      shareKey: shareCode, SharePwd: password,
+      Page: String(page), limit: '100', next: '0',
+      orderBy: 'file_id', orderDirection: 'desc',
+      parentFileId: String(parentFileId)
+    }).toString();
+    const url = OFFICIAL_API.base + path + '?' + params + '&' + sign;
+    let d;
+    try {
+      const r = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': 'Bearer ' + S.officialToken,
+          'Origin': OFFICIAL_API.base, 'Referer': OFFICIAL_API.base + '/',
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
+          'platform': 'web', 'app-version': '3'
+        }
+      });
+      const text = await r.text();
+      if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 100));
+      d = JSON.parse(text);
+    } catch (e) {
+      if (e.message.includes('HTTP')) throw e;
+      throw new Error('网络请求失败：' + e.message);
+    }
+    if (d.code !== 0) throw new Error(d.message || 'API错误 code=' + d.code);
+    const files = d?.data?.InfoList || [];
+    if (files.length === 0) break;
+    for (const f of files) {
+      if (f.Type === 1) {
+        const subPath = parentName ? parentName + '/' + f.FileName : f.FileName;
+        await fetchShareDirRecursive(shareCode, password, subPath, f.FileId, result);
+      } else {
+        const fullPath = parentName ? parentName + '/' + f.FileName : f.FileName;
+        result.push({
+          name: f.FileName, size: f.Size,
+          fileId: String(f.FileId), etag: f.Etag || '',
+          parentPath: fullPath
+        });
+      }
+    }
+    if (files.length < 100) break;
+    page++; if (page > 50) break;
+  }
+}
+
+async function parseShareOpenList(shareCode, password) {
+  const d = await openApi('/api/share/list', 'POST', {
+    share_key: shareCode,
+    password: password
+  });
+
+  if (d?.data?.file_list) {
+    return d.data.file_list.map(f => ({
+      name: f.name || f.file_name,
+      size: f.size || 0,
+      fileId: f.id || f.file_id,
+      parentPath: f.parent || '/',
+      etag: f.etag || ''
+    }));
+  }
+  if (d?.data?.files) {
+    return d.data.files;
+  }
+  if (d?.data?.content) {
+    return d.data.content;
+  }
+
+  throw new Error('分享解析返回格式不支持');
+}
+
+async function generateShareFastlinks(shareData) {
+  const prog = document.getElementById('share-prog');
+  const fill = document.getElementById('share-fill');
+  const pctEl = document.getElementById('share-pct');
+  const statusEl = document.getElementById('share-status');
+  prog.classList.add('show');
+
+  const results = [];
+  let ok = 0, fail = 0;
+
+  for (let i = 0; i < shareData.length; i++) {
+    const f = shareData[i];
+    const pct = Math.round((i + 1) / shareData.length * 100);
+    fill.style.width = pct + '%';
+    pctEl.textContent = pct + '%';
+    statusEl.textContent = '生成秒传 ' + (i + 1) + '/' + shareData.length;
+
+    try {
+      let link = '';
+      if (f.etag) {
+        link = '123FLCPV2$' + f.etag + '#' + f.size + '#' + f.name.replace(/[%#$]/g, '');
+      }
+
+      if (link) {
+        results.push({ path: f.parentPath, fastlink: link, success: true });
+        ok++;
+      } else {
+        results.push({ path: f.parentPath, fastlink: '', success: false, error: '无法生成' });
+        fail++;
+      }
+    } catch (e) {
+      results.push({ path: f.parentPath, fastlink: '', success: false, error: e.message });
+      fail++;
+    }
+
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  if (results.length > 0) {
+    const zip = new JSZip();
+    const folderName = document.getElementById('inp-share-url').value.trim().substring(0, 30).replace(/[^\w\-]/g, '_');
+    const folder = zip.folder('分享秒传_' + (folderName || 'share'));
+
+    for (const item of results) {
+      if (item.success) {
+        const pathParts = item.path.split('/');
+        const fileName = pathParts.pop();
+        let cur = folder;
+        for (const part of pathParts) {
+          if (part) cur = cur.folder(part) || cur;
+        }
+        cur.file(fileName + '.json', item.fastlink);
+      }
+    }
+
+    folder.file('说明.txt',
+      '123秒传 分享解析\n' +
+      '分享链接：' + document.getElementById('inp-share-url').value + '\n' +
+      '生成时间：' + new Date().toLocaleString('zh-CN') + '\n' +
+      '成功：' + ok + ' 个\n' +
+      '失败：' + fail + ' 个\n' +
+      '说明：每个文件对应原文件，文件名为"原文件名.json"，内容为秒传链接\n'
+    );
+
+    S.shareZipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    document.getElementById('share-dl-info').textContent = '共 ' + ok + ' 个成功，' + (fail > 0 ? fail + ' 个失败' : '0 个失败');
+    document.getElementById('share-download').classList.add('show');
+  }
+
+  prog.classList.remove('show');
+  toast('完成：' + ok + ' 成功，' + fail + ' 失败', fail > ok ? 'warn' : 'success');
+}
+
+function downloadShareZip() {
+  if (!S.shareZipBlob) { toast('ZIP 未就绪', 'error'); return; }
+  const code = document.getElementById('inp-share-url').value.trim().substring(0, 30).replace(/[^\w]/g, '_') || 'share';
+  saveAs(S.shareZipBlob, '分享秒传_' + code + '.zip');
+  toast('下载开始！', 'success');
+}
+
+// ============================================================
+// ===== 保存秒传 =====
+// ============================================================
+async function doSave() {
+  const txt = document.getElementById('inp-save').value.trim();
+  if (!txt) { toast('请输入秒传内容', 'error'); return; }
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; document.getElementById('btn-save-text').innerHTML = '<span class="spin"></span> 保存中...';
+  document.getElementById('save-result').classList.remove('show');
+  const prog = document.getElementById('save-prog');
+  const fill = document.getElementById('save-fill');
+  const pctEl = document.getElementById('save-pct');
+  const stEl = document.getElementById('save-status');
+  prog.classList.add('show'); fill.style.width = '0%';
+
+  try {
+    let list = [];
+    try {
+      const j = JSON.parse(txt);
+      if (j.files && Array.isArray(j.files)) {
+        list = j.files.map(f => ({
+          etag: f.etag,
+          size: parseInt(f.size) || 0,
+          fileName: (f.path.split('/').pop() || f.path).trim()
+        }));
+      }
+    } catch (e) {}
+    if (!list.length) list = parseLinks(txt);
+    if (!list.length) throw new Error('未识别到有效秒传内容');
+
+    let ok = 0, bad = 0; S.failList = [];
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      const pct = Math.round((i + 1) / list.length * 100);
+      fill.style.width = pct + '%'; pctEl.textContent = pct + '%';
+      stEl.textContent = '保存 ' + (i + 1) + '/' + list.length;
+      try {
+        const d = await apiOfficial('POST', '/b/api/file/upload_request', {
+          driveId: 0, etag: item.etag, fileName: item.fileName, parentFileId: '0', size: item.size, type: 0, duplicate: 2
+        });
+        if (d?.data?.Reuse === true || d?.data?.reuse === true) ok++; else { bad++; S.failList.push(item); }
+      } catch (e) { bad++; item.err = e.message; S.failList.push(item); }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    prog.classList.remove('show');
+    document.getElementById('save-stats').innerHTML =
+      '<div class="stat-box"><div class="stat-num">' + ok + '</div><div class="stat-lbl">✅ 成功</div></div>' +
+      '<div class="stat-box"><div class="stat-num fail">' + bad + '</div><div class="stat-lbl">❌ 失败</div></div>';
+    document.getElementById('save-result').classList.add('show');
+    if (bad === 0) toast('全部 ' + ok + ' 个文件保存成功！', 'success');
+    else toast('完成：' + ok + ' 成功，' + bad + ' 失败', bad > ok / 2 ? 'error' : 'info');
+  } catch (e) { prog.classList.remove('show'); toast(e.message, 'error'); }
+  finally { btn.disabled = false; document.getElementById('btn-save-text').textContent = '⚡ 开始保存'; }
+}
+
+function parseLinks(txt) {
+  const res = [];
+  txt.replace(/123FLCPV2\$/g, '').split('$').filter(Boolean).forEach(seg => {
+    const p = seg.split('#');
+    if (p.length < 3) return;
+    let [etag, size, fpath] = p;
+    if (fpath.includes('%')) fpath = fpath.split('%').pop();
+    res.push({ etag: etag.trim(), size: parseInt(size) || 0, fileName: (fpath.split('/').pop() || fpath).trim() });
+  });
+  return res;
+}
+
+function retryFail() {
+  if (!S.failList.length) { toast('没有失败项', 'info'); return; }
+  const txt = S.failList.map(f => f.etag + '#' + f.size + '#' + f.fileName).join('\n');
+  document.getElementById('inp-save').value = txt;
+  toast('已载入 ' + S.failList.length + ' 个失败文件', 'info'); doSave();
+}
+
+// ============================================================
+// ===== 复制 =====
+// ============================================================
+function copyLink(type) {
+  let txt = '';
+  if (type === 'cloud') txt = document.getElementById('cloud-link').textContent;
+  else txt = S.failList.map(f => f.etag + '#' + f.size + '#' + f.fileName).join('\n');
+  if (!txt || txt === '—') { toast('没有内容', 'error'); return; }
+  navigator.clipboard.writeText(txt).then(() => toast('已复制！', 'success')).catch(() => toast('复制失败', 'error'));
+}
+
+// ============================================================
+// ===== 工具函数 =====
+// ============================================================
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+  if (b < 1024 * 1024 * 1024) return (b / 1024 / 1024).toFixed(2) + ' MB';
+  return (b / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+}
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function saveAs(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+</script>
+</body>
+</html>
