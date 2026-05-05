@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>123秒传</title>
-  <!-- JSZip loaded locally or fallback -->
-  <script>window.JSZip=null;</script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -228,10 +226,6 @@
   </style>
 </head>
 <body>
-<noscript style="padding:20px;font-size:20px;color:red;">
-⚠️ JavaScript未启用！请在浏览器设置中启用JavaScript
-</noscript>
-<script>document.write('<div style="padding:20px;font-size:20px;color:green;">✅ JavaScript已启用</div>');</script>
 
 <!-- ==================== 登录页 ==================== -->
 <div id="page-login" class="page login-page active">
@@ -259,7 +253,7 @@
           <input type="checkbox" id="chk-remember" checked>
           <label for="chk-remember">记住账号密码</label>
         </div>
-        <button class="btn btn-primary btn-full" id="btn-login">
+        <button class="btn btn-primary btn-full" id="btn-login" onclick="doLoginOfficial()">
           <span id="btn-login-text">登录 123云盘</span>
         </button>
       </div>
@@ -427,7 +421,6 @@
         <div class="dl-title">ZIP 打包完成！</div>
         <div class="dl-sub" id="batch-dl-info">共 0 个文件</div>
         <button class="btn btn-primary btn-full" onclick="downloadBatchZip()">⬇️ 下载 ZIP</button>
-        <button class="btn btn-purple btn-full" onclick="saveTo123Cloud()" style="margin-top:8px">☁️ 保存到123云盘(JSON)</button>
       </div>
     </div>
   </div>
@@ -484,18 +477,6 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// Test if JS is loading
-console.log('JS loaded at', new Date());
-alert('JS已加载');
-
-// 添加按钮点击事件
-window.onload = function() {
-  document.getElementById('btn-login').addEventListener('click', function() {
-    alert('按钮点击了');
-    doLoginOfficial();
-  });
-};
-
 // ============================================================
 // ===== 全局状态 =====
 // ============================================================
@@ -566,12 +547,10 @@ function toast(m, t = 'info') {
 // ===== 官方账号登录 =====
 // ============================================================
 function doLoginOfficial() {
-  console.log('doLoginOfficial called');
   const user = document.getElementById('inp-user').value.trim();
   const pwd = document.getElementById('inp-pwd').value;
   const rem = document.getElementById('chk-remember').checked;
-  if (!user || !pwd) { alert('请输入账号和密码'); toast('请输入账号和密码', 'error'); return; }
-  alert('开始登录: ' + user);
+  if (!user || !pwd) { toast('请输入账号和密码', 'error'); return; }
   const btn = document.getElementById('btn-login');
   const btnT = document.getElementById('btn-login-text');
   btn.disabled = true; btnT.innerHTML = '<span class="spin"></span> 登录中...';
@@ -590,11 +569,7 @@ function doLoginOfficial() {
       toast('登录成功！', 'success');
       setTimeout(() => showPage('home'), 350);
     } else { toast(d.message || '登录失败，请检查账号密码', 'error'); }
-  }).catch(e => { 
-    console.error('Login error:', e);
-    alert('网络错误: ' + e.message);
-    toast('网络异常: ' + e.message, 'error'); 
-  }).finally(() => { btn.disabled = false; btnT.textContent = '登录 123云盘'; });
+  }).catch(() => toast('网络异常，请检查网络', 'error')).finally(() => { btn.disabled = false; btnT.textContent = '登录 123云盘'; });
 }
 
 // ============================================================
@@ -1142,74 +1117,6 @@ async function collectAllFiles(dirId, basePath = '') {
   return files;
 }
 
-// 保存到123云盘（JSON格式，不打包ZIP）
-async function saveTo123Cloud() {
-  if (!S.officialToken) { toast('请先登录123云盘', 'error'); return; }
-  
-  if (!S.batchResults?.length) { toast('没有可保存的秒传', 'error'); return; }
-  
-  toast('正在保存到123云盘...', 'info');
-  
-  try {
-    const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const fname = '秒传链接_' + timestamp + '.json';
-    
-    // 组装JSON内容
-    const data = {
-      generateTime: new Date().toISOString(),
-      total: S.batchResults.length,
-      success: S.batchResults.filter(r => r.success).length,
-      fail: S.batchResults.filter(r => !r.success).length,
-      links: S.batchResults.filter(r => r.success).map(r => ({
-        name: r.path?.split('/').pop() || r.fastlink?.split('#')[0],
-        fastlink: r.fastlink
-      }))
-    };
-    
-    const jsonStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    
-    // 用秒传API上传
-    const etag = btoa(fname + Date.now()).replace(/[^a-z0-9]/gi, '').substring(0, 32);
-    
-    const d = await apiOfficial('POST', '/b/api/file/upload_request', {
-      driveId: 0,
-      etag: etag,
-      fileName: fname,
-      parentFileId: '0',
-      size: blob.size,
-      type: 0,
-      duplicate: 2
-    });
-    
-    console.log('upload_request:', d);
-    
-    if (d?.data?.reuse === true || d?.data?.Reuse === true) {
-      toast('保存成功（秒传）', 'success');
-      return;
-    }
-    
-    const uploadUrl = d?.data?.uploadUrl || d?.data?.preuploadUrl;
-    if (uploadUrl) {
-      const formData = new FormData();
-      formData.append('file', blob, fname);
-      
-      const up = await fetch(uploadUrl, {
-        method: 'POST',
-        body: formData
-      });
-      
-      console.log('upload:', up.status);
-      toast('保存成功！', 'success');
-    } else {
-      toast('保存失败', 'error');
-    }
-  } catch (e) {
-    console.error('Save error:', e);
-    toast('保存失败: ' + e.message, 'error');
-  }
-}
-
 async function makeBatchZip() {
   const zip = new JSZip();
   const folderName = new Date().toISOString().slice(0,10).replace(/-/g,'') + '_batch';
@@ -1240,135 +1147,14 @@ async function makeBatchZip() {
     '说明：每个 .json 文件对应原文件，文件名为"原文件名.json"，内容为秒传链接\n'
   );
 
-  try {
-    S.batchZipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-  } catch (e) {
-    toast('ZIP生成失败: ' + e.message, 'error');
-    S.batchZipBlob = null;
-    return;
-  }
-}
-
-async function uploadZipTo123(blob, filename) {
-  if (!S.officialToken) { toast('请先登录123云盘', 'error'); return false; }
-  
-  toast('正在上传...', 'info');
-  
-  try {
-    const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const fname = '秒传备份_' + timestamp;
-    
-    // 读取文件为 Base64
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    await new Promise(r => reader.onload = r);
-    
-    // 用已有的保存逻辑
-    const etag = btoa(fname + Date.now()).replace(/[^a-z0-9]/gi, '').substring(0, 32);
-    const fileSize = blob.size;
-    
-    // 请求上传
-    const d = await apiOfficial('POST', '/b/api/file/upload_request', {
-      driveId: 0,
-      etag: etag,
-      fileName: fname + '.zip',
-      parentFileId: '0',
-      size: fileSize,
-      type: 0,
-      duplicate: 2
-    });
-    
-    console.log('upload_request:', d);
-    
-    // 秒传成功
-    if (d?.data?.reuse === true || d?.data?.Reuse === true || d?.data?.Reuse === 'true') {
-      toast('上传成功（秒传）', 'success');
-      return true;
-    }
-    
-    // 需要实际上传
-    const uploadUrl = d?.data?.uploadUrl || d?.data?.preuploadUrl;
-    if (uploadUrl) {
-      // 用 FormData 上传
-      const formData = new FormData();
-      formData.append('file', blob, fname + '.zip');
-      
-      const up = await fetch(uploadUrl, {
-        method: 'POST',
-        body: formData
-      });
-      
-      console.log('upload response:', up.status);
-      
-      if (up.ok || up.status === 200) {
-        toast('上传成功！', 'success');
-        return true;
-      }
-    }
-    
-    // 上传失败，返回下载方式
-    toast('需要实际上传，改为下载', 'info');
-    return false;
-  } catch (e) {
-    console.error('Upload error:', e);
-    toast('上传失败: ' + e.message, 'error');
-    return false;
-  }
-}
-    
-    // 2. 需要实际上传
-    const uploadUrl = d?.data?.uploadUrl;
-    if (!uploadUrl) throw new Error('获取上传地址失败');
-    
-    // 上传文件
-    const formData = new FormData();
-    formData.append('file', new Blob([arrayBuffer]), fname);
-    
-    const up = await fetch(uploadUrl, {
-      method: 'POST',
-      body: formData,
-      headers: { 'Authorization': 'Bearer ' + S.officialToken }
-    });
-    
-    if (!up.ok) throw new Error('上传失败');
-    
-    toast('上传成功！', 'success');
-    return true;
-  } catch (e) {
-    console.error('Upload error:', e);
-    toast('上传失败: ' + e.message, 'error');
-    return false;
-  }
+  S.batchZipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
 }
 
 function downloadBatchZip() {
   if (!S.batchZipBlob) { toast('ZIP 未就绪', 'error'); return; }
-  
   const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const fname = '秒传备份_' + timestamp + '.zip';
-  
-  // 登录了 就尝试上传到123云盘
-  if (S.officialToken) {
-    toast('正在上传到123云盘...', 'info');
-    uploadZipTo123(S.batchZipBlob, fname).then(ok => {
-      if (!ok) {
-        // 上传失败就下载
-        saveAs(S.batchZipBlob, fname);
-      }
-    });
-  } else {
-    // 没登录就下载
-    saveAs(S.batchZipBlob, fname);
-    toast('下载开始！', 'success');
-  }
-}
-
-// md5 计算
-async function md5(buffer) {
-  // 用简易方式计算 MD5
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
+  saveAs(S.batchZipBlob, '秒传备份_' + timestamp + '.zip');
+  toast('下载开始！', 'success');
 }
 
 // ============================================================
@@ -1703,54 +1489,9 @@ function fmtSize(b) {
 }
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function saveAs(blob, filename) {
-  // 保存到网盘
-  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Download) {
-    const reader = new FileReader();
-    reader.onload = async function() {
-      const base64 = reader.result.split(',')[1];
-      try {
-        await window.Capacitor.Plugins.Download.saveToCloud({
-          data: base64,
-          filename: filename,
-          packageName: "com.mfcloudcalculate.networkdisk" // 123云盘
-        });
-        return;
-      } catch(e) {
-        console.log('Error:', e);
-      }
-      // 失败就用系统分享
-      const file = new File([blob], filename, { type: 'application/zip' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file] });
-      }
-    };
-    reader.readAsDataURL(blob);
-    return;
-  }
-  // 后备：系统分享
-  if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: 'application/zip' })})) {
-    navigator.share({ files: [new File([blob], filename, { type: 'application/zip' }] });
-  } else {
-    fallbackDownload(blob, filename);
-  }
-}
-      // 失败就用 base64
-      fallbackDownload(blob, filename);
-    };
-    reader.readAsDataURL(blob);
-    return;
-  }
-  fallbackDownload(blob, filename);
-}
-
-function fallbackDownload(blob, filename) {
-  // 创建 blob URL
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  // 延迟释放
+  a.href = url; a.download = filename; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 </script>
