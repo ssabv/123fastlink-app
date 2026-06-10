@@ -283,7 +283,6 @@
     <div class="tab" data-tab="save" onclick="switchTab('save')">📥 保存秒传</div>
     <div class="tab" data-tab="batch" onclick="switchTab('batch')">📦 批量生成</div>
     <div class="tab" data-tab="share" onclick="switchTab('share')">🔗 分享解析</div>
-    <div class="tab" data-tab="batchshare" onclick="switchTab('batchshare')">📤 批量分享</div>
   </div>
 
   <!-- ===== 网盘文件 ===== -->
@@ -496,9 +495,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ============================================================
 // ===== 全局状态 =====
-// ============================================================
 const S = {
   officialToken: localStorage.getItem('t') || '',
   officialUser: localStorage.getItem('u') || '',
@@ -524,9 +521,7 @@ const S = {
 
 const OFFICIAL_API = { login: 'https://login.123pan.com/api/user/sign_in', base: 'https://www.123pan.com' };
 
-// ============================================================
 // ===== 页面初始化 =====
-// ============================================================
 (function init() {
   if (S.officialToken) {
     showPage('home');
@@ -546,15 +541,12 @@ function showPage(n) {
   document.getElementById('page-' + n).classList.add('active');
 }
 
-// ============================================================
 function showPage(n) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + n).classList.add('active');
 }
 
-// ============================================================
 // ===== Toast =====
-// ============================================================
 let _tt;
 function toast(m, t = 'info') {
   const el = document.getElementById('toast');
@@ -562,9 +554,7 @@ function toast(m, t = 'info') {
   clearTimeout(_tt); _tt = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-// ============================================================
 // ===== 官方账号登录 =====
-// ============================================================
 function doLoginOfficial() {
   const user = document.getElementById('inp-user').value.trim();
   const pwd = document.getElementById('inp-pwd').value;
@@ -591,9 +581,7 @@ function doLoginOfficial() {
   }).catch(() => toast('网络异常，请检查网络', 'error')).finally(() => { btn.disabled = false; btnT.textContent = '登录 123云盘'; });
 }
 
-// ============================================================
 // ===== OpenList 服务器登录 =====
-// ============================================================
 async function doLoginOpen() {
   const serverUrl = document.getElementById('inp-openlist-url').value.trim().replace(/\/$/, '');
   const accessToken = document.getElementById('inp-openlist-token').value.trim();
@@ -637,9 +625,7 @@ async function doLoginOpen() {
   }
 }
 
-// ============================================================
 // ===== 登出 =====
-// ============================================================
 function logout() {
   if (!confirm('确定退出登录？')) return;
   localStorage.removeItem('t'); localStorage.removeItem('u'); localStorage.removeItem('p');
@@ -657,9 +643,7 @@ function logout() {
   showPage('login'); toast('已退出', 'info');
 }
 
-// ============================================================
 // ===== Tab 切换 =====
-// ============================================================
 function switchTab(n) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelector('.tab[data-tab="' + n + '"]').classList.add('active');
@@ -670,9 +654,7 @@ function switchTab(n) {
   if (n === 'batch') updateBatchUI();
 }
 
-// ============================================================
 // ===== 开放平台 API 请求 =====
-// ============================================================
 async function openApi(path, method = 'POST', body = {}) {
   const url = S.openListUrl + path;
   const options = {
@@ -687,9 +669,7 @@ async function openApi(path, method = 'POST', body = {}) {
   return d;
 }
 
-// ============================================================
 // ===== 文件列表加载 =====
-// ============================================================
 async function loadDir(parentId) {
   const listEl = document.getElementById('file-list');
   listEl.innerHTML = '<div class="loading"><div class="spin dark" style="margin:0 auto 8px;"></div>加载中...</div>';
@@ -821,9 +801,7 @@ async function apiOfficial(method, path, body, params) {
   return d;
 }
 
-// ============================================================
 // ===== CRC32 签名 =====
-// ============================================================
 function crc32(d) {
   const t = new Uint32Array(256);
   for (let i = 0; i < 256; i++) { let c = i; for (let j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[i] = c; }
@@ -845,9 +823,7 @@ function signP(p) {
 }
 function buildUrl(p) { return p + '?' + signP(p); }
 
-// ============================================================
 // ===== 渲染文件列表 =====
-// ============================================================
 function renderCrumb() {
   const el = document.getElementById('crumb-bar');
   el.innerHTML = S.stack.map((d, i) =>
@@ -915,9 +891,7 @@ function doSearch(kw) {
   renderFiles(S.files.filter(f => f.FileName.toLowerCase().includes(k)));
 }
 
-// ============================================================
 // ===== 生成秒传 =====
-// ============================================================
 async function genFromCloud() {
   if (!S.sel) { toast('请先选择一个文件', 'error'); return; }
   const btn = document.getElementById('btn-gen-cloud');
@@ -972,9 +946,7 @@ async function genFastlinkOpen(file) {
   return '';
 }
 
-// ============================================================
 // ===== 批量生成 =====
-// ============================================================
 function updateBatchUI() {
   const curDirData = S.curDir !== '0' ? S.files.find(f => String(f.FileId) === String(S.curDir)) : null;
   const hasDir = S.curDir !== '0';
@@ -1176,9 +1148,7 @@ function downloadBatchZip() {
   toast('下载开始！', 'success');
 }
 
-// ============================================================
 // ===== 分享解析 =====
-// ============================================================
 async function shareGen() {
   const shareUrl = document.getElementById('inp-share-url').value.trim();
   const sharePwd = document.getElementById('inp-share-pwd').value.trim();
@@ -1412,9 +1382,7 @@ function downloadShareZip() {
   toast('下载开始！', 'success');
 }
 
-// ============================================================
 // ===== 保存秒传 =====
-// ============================================================
 async function doSave() {
   const txt = document.getElementById('inp-save').value.trim();
   if (!txt) { toast('请输入秒传内容', 'error'); return; }
@@ -1486,9 +1454,7 @@ function retryFail() {
   toast('已载入 ' + S.failList.length + ' 个失败文件', 'info'); doSave();
 }
 
-// ============================================================
 // ===== 复制 =====
-// ============================================================
 function copyLink(type) {
   let txt = '';
   if (type === 'cloud') txt = document.getElementById('cloud-link').textContent;
@@ -1497,9 +1463,7 @@ function copyLink(type) {
   navigator.clipboard.writeText(txt).then(() => toast('已复制！', 'success')).catch(() => toast('复制失败', 'error'));
 }
 
-// ============================================================
 // ===== 工具函数 =====
-// ============================================================
 function fmtSize(b) {
   if (b < 1024) return b + ' B';
   if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
@@ -1514,9 +1478,7 @@ function saveAs(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// ============================================================
 // ===== 批量分享功能 =====
-// ============================================================
 let bsFolders = [];
 let bsResults = [];
 let bsRunning = false;
@@ -1729,9 +1691,7 @@ function getAuthHeaders() {
 }
 
 
-// ============================================================
 // ===== 批量分享 & 批量秒传功能 =====
-// ============================================================
 let bsResults = [];
 
 // 全选/取消全选
@@ -1906,49 +1866,6 @@ function exportSharesCSV() {
 }
 
 </script>
-
-  <!-- ===== 批量分享页 ===== -->
-  <div id="tab-batchshare" class="tab-content">
-    <div class="card">
-      <div style="font-size:15px;font-weight:700;margin-bottom:12px;">📤 批量分享子文件夹</div>
-      <p style="font-size:13px;color:var(--sub);margin-bottom:14px;">
-        输入父文件夹ID，自动列出所有子文件夹并批量创建分享链接（带4位随机密码）
-      </p>
-
-      <div class="input-group">
-        <label>父文件夹 ID</label>
-        <input type="text" id="inp-bs-parent" placeholder="输入123云盘父文件夹ID">
-      </div>
-
-      <div class="btn-row" style="margin-top:12px;">
-        <button class="btn btn-outline btn-sm" id="btn-bs-list" onclick="bsListFolders()">
-          📂 列出子文件夹
-        </button>
-        <button class="btn btn-primary btn-sm" id="btn-bs-share" onclick="bsStartShare()" disabled>
-          📤 开始批量分享
-        </button>
-      </div>
-
-      <div class="prog" id="bs-prog" style="display:none;">
-        <div class="prog-info">
-          <span id="bs-status">准备中...</span>
-          <span id="bs-pct">0%</span>
-        </div>
-        <div class="prog-bar"><div class="prog-fill" id="bs-fill"></div></div>
-      </div>
-
-      <div id="bs-folder-list" style="margin-top:12px;max-height:300px;overflow-y:auto;"></div>
-    </div>
-
-    <div class="card" id="bs-result-card" style="display:none;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:12px;">📋 分享结果</div>
-      <div id="bs-result-list" style="max-height:400px;overflow-y:auto;"></div>
-      <div class="btn-row" style="margin-top:12px;">
-        <button class="btn btn-primary btn-sm" onclick="bsCopyAll()">📋 复制全部链接</button>
-        <button class="btn btn-purple btn-sm" onclick="bsExportExcel()">📊 导出 Excel</button>
-      </div>
-    </div>
-  </div>
 
 </body>
 </html>
