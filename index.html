@@ -279,58 +279,11 @@
 
   <!-- Tab切换 -->
   <div class="tabs">
+    <div class="tab active" data-tab="cloud" onclick="switchTab('cloud')">☁️ 网盘文件</div>
     <div class="tab" data-tab="batchshare" onclick="switchTab('batchshare')">📤 批量分享</div>
-    <div class="tab active" data-tab="cloud" onclick="switchTab('cloud')">⚡ 秒传</div>
     <div class="tab" data-tab="save" onclick="switchTab('save')">📥 保存秒传</div>
     <div class="tab" data-tab="batch" onclick="switchTab('batch')">📦 批量生成</div>
     <div class="tab" data-tab="share" onclick="switchTab('share')">🔗 分享解析</div>
-  </div>
-
-  <!-- ===== 批量分享页 ===== -->
-  <div id="tab-batchshare" class="tab-content" style="overflow-x:auto;">
-    <div class="card">
-      <div class="sec-title">📤 批量分享子文件夹</div>
-      <p style="font-size:13px;color:var(--sub);margin-bottom:14px;">
-        输入父文件夹ID，自动列出所有子文件夹并批量创建分享链接
-      </p>
-
-      <div class="input-group">
-        <label>父文件夹 ID</label>
-        <input type="text" id="inp-bs-parent" placeholder="输入123云盘父文件夹ID">
-      </div>
-
-      <div class="btn-row" style="margin-top:12px;">
-        <button class="btn btn-outline btn-sm" id="btn-bs-list" onclick="bsListFolders()">
-          📂 列出子文件夹
-        </button>
-        <button class="btn btn-primary btn-sm" id="btn-bs-share" onclick="bsStartShare()" disabled>
-          📤 开始批量分享
-        </button>
-      </div>
-      <button class="btn btn-purple btn-full mt-10" onclick="bsExportAllSharesCSV()">
-        📊 导出账号全部分享链接CSV
-      </button>
-
-      <div class="prog" id="bs-prog" style="display:none;">
-        <div class="prog-info">
-          <span id="bs-status">准备中...</span>
-          <span id="bs-pct">0%</span>
-        </div>
-        <div class="prog-bar"><div class="prog-fill" id="bs-fill"></div></div>
-      </div>
-
-      <div id="bs-folder-list" style="margin-top:12px;max-height:300px;overflow-y:auto;"></div>
-    </div>
-
-    <!-- 批量分享结果 -->
-    <div class="card" id="bs-result-card" style="display:none;">
-      <div style="font-size:14px;font-weight:700;margin-bottom:10px;">📋 分享结果 <span id="bs-result-count" style="font-size:12px;color:var(--sub);font-weight:400;"></span></div>
-      <div id="bs-result-list" style="max-height:500px;overflow-y:auto;overflow-x:auto;"></div>
-      <div class="btn-row" style="margin-top:12px;">
-        <button class="btn btn-primary btn-sm" onclick="bsCopyAll()">📋 复制全部链接+密码</button>
-        <button class="btn btn-purple btn-sm" onclick="bsExportCSV()">📊 导出CSV</button>
-      </div>
-    </div>
   </div>
 
   <!-- ===== 网盘文件 ===== -->
@@ -356,24 +309,6 @@
       </div>
 
       <div class="crumb-bar" id="crumb-bar"></div>
-
-      <!-- 批量操作工具栏 -->
-      <div class="card" style="padding:12px;margin-bottom:0;">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
-            <input type="checkbox" id="chk-select-all" onchange="toggleSelectAll()"> 全选
-          </label>
-          <span id="sel-count" style="font-size:12px;color:var(--sub);">已选 0 项</span>
-          <div style="flex:1;"></div>
-          <button class="btn btn-outline btn-sm" id="btn-batch-share" onclick="batchShare()" disabled>
-            📤 批量分享
-          </button>
-          <button class="btn btn-purple btn-sm" id="btn-batch-miaochuan" onclick="genMiaochuanFromCloud()" disabled>
-            ⚡ 生成秒传
-          </button>
-        </div>
-      </div>
-
       <div class="file-list" id="file-list">
         <div class="loading" id="list-loading">
           <div class="spin dark" style="margin:0 auto 8px;"></div>
@@ -381,17 +316,55 @@
         </div>
       </div>
 
-      <!-- 秒传结果区域 -->
-      <div id="miaochuan-result" style="display:none;">
-        <div class="card" style="margin-top:12px;">
-          <div style="font-size:14px;font-weight:700;margin-bottom:10px;">⚡ 秒传链接 <span id="mc-count" style="font-size:12px;color:var(--sub);font-weight:400;"></span></div>
-          <div id="mc-result-list" style="max-height:400px;overflow-y:auto;"></div>
-          <div class="btn-row" style="margin-top:12px;">
-            <button class="btn btn-primary btn-sm" onclick="mcCopyAll()">📋 复制全部</button>
-          </div>
+      <div class="result-box" id="cloud-result">
+        <div class="result-label">✅ 秒传链接</div>
+        <a class="result-link" id="cloud-link" href="#" onclick="event.preventDefault()">—</a>
+        <div class="result-chips" id="cloud-chips"></div>
+        <div class="btn-row mt-10">
+          <button class="btn btn-primary btn-sm btn-full" onclick="copyLink('cloud')">📋 复制链接</button>
         </div>
       </div>
 
+      <button class="btn btn-primary btn-full mt-10" id="btn-gen-cloud" onclick="genFromCloud()" disabled>
+        <span id="btn-gen-cloud-text">⚡ 生成秒传</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== 批量分享 ===== -->
+  <div id="tab-batchshare" class="tab-content">
+    <div class="card">
+      <div class="sec-title">📤 批量分享一级子文件夹</div>
+      <p style="font-size:13px;color:var(--sub);margin-bottom:14px;">
+        输入父文件夹ID，自动列出该目录下的一级子文件夹，并批量创建分享链接。
+      </p>
+      <div class="input-group">
+        <label>父文件夹 ID</label>
+        <input type="text" id="inp-bsf-parent" placeholder="根目录填 0，或填写目标父文件夹ID">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-outline btn-sm" id="btn-bsf-list" onclick="bsfListFolders()">📂 列出子文件夹</button>
+        <button class="btn btn-primary btn-sm" id="btn-bsf-share" onclick="bsfStartShare()" disabled>📤 开始批量分享</button>
+      </div>
+      <button class="btn btn-purple btn-full mt-10" onclick="bsfExportAllSharesCSV()">📊 导出账号全部分享链接CSV</button>
+
+      <div class="prog" id="bsf-prog" style="display:none;">
+        <div class="prog-text">
+          <span id="bsf-status">准备中...</span>
+          <span id="bsf-pct">0%</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" id="bsf-fill"></div></div>
+      </div>
+      <div id="bsf-folder-list" style="margin-top:12px;max-height:300px;overflow-y:auto;"></div>
+    </div>
+
+    <div class="card" id="bsf-result-card" style="display:none;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px;">📋 分享结果 <span id="bsf-result-count" style="font-size:12px;color:var(--sub);font-weight:400;"></span></div>
+      <div id="bsf-result-list" style="max-height:500px;overflow-y:auto;overflow-x:auto;"></div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn btn-primary btn-sm" onclick="bsfCopyAll()">📋 复制全部链接+密码</button>
+        <button class="btn btn-purple btn-sm" onclick="bsfExportCSV()">📊 导出CSV</button>
+      </div>
     </div>
   </div>
 
@@ -542,7 +515,9 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ============================================================
 // ===== 全局状态 =====
+// ============================================================
 const S = {
   officialToken: localStorage.getItem('t') || '',
   officialUser: localStorage.getItem('u') || '',
@@ -568,12 +543,13 @@ const S = {
 
 const OFFICIAL_API = { login: 'https://login.123pan.com/api/user/sign_in', base: 'https://www.123pan.com' };
 
+// ============================================================
 // ===== 页面初始化 =====
+// ============================================================
 (function init() {
   if (S.officialToken) {
     showPage('home');
     document.getElementById('nav-user').textContent = S.officialUser || '用户';
-    setTimeout(() => { if (S.files.length === 0) loadDir('0'); }, 100);
   } else {
     showPage('login');
   }
@@ -589,12 +565,15 @@ function showPage(n) {
   document.getElementById('page-' + n).classList.add('active');
 }
 
+// ============================================================
 function showPage(n) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + n).classList.add('active');
 }
 
+// ============================================================
 // ===== Toast =====
+// ============================================================
 let _tt;
 function toast(m, t = 'info') {
   const el = document.getElementById('toast');
@@ -602,7 +581,9 @@ function toast(m, t = 'info') {
   clearTimeout(_tt); _tt = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
+// ============================================================
 // ===== 官方账号登录 =====
+// ============================================================
 function doLoginOfficial() {
   const user = document.getElementById('inp-user').value.trim();
   const pwd = document.getElementById('inp-pwd').value;
@@ -624,12 +605,14 @@ function doLoginOfficial() {
       document.getElementById('nav-user').textContent = user;
       document.getElementById('nav-mode-badge').style.display = 'none';
       toast('登录成功！', 'success');
-      setTimeout(() => { showPage('home'); loadDir('0'); }, 350);
+      setTimeout(() => showPage('home'), 350);
     } else { toast(d.message || '登录失败，请检查账号密码', 'error'); }
   }).catch(() => toast('网络异常，请检查网络', 'error')).finally(() => { btn.disabled = false; btnT.textContent = '登录 123云盘'; });
 }
 
+// ============================================================
 // ===== OpenList 服务器登录 =====
+// ============================================================
 async function doLoginOpen() {
   const serverUrl = document.getElementById('inp-openlist-url').value.trim().replace(/\/$/, '');
   const accessToken = document.getElementById('inp-openlist-token').value.trim();
@@ -673,7 +656,9 @@ async function doLoginOpen() {
   }
 }
 
+// ============================================================
 // ===== 登出 =====
+// ============================================================
 function logout() {
   if (!confirm('确定退出登录？')) return;
   localStorage.removeItem('t'); localStorage.removeItem('u'); localStorage.removeItem('p');
@@ -691,7 +676,9 @@ function logout() {
   showPage('login'); toast('已退出', 'info');
 }
 
+// ============================================================
 // ===== Tab 切换 =====
+// ============================================================
 function switchTab(n) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelector('.tab[data-tab="' + n + '"]').classList.add('active');
@@ -702,7 +689,9 @@ function switchTab(n) {
   if (n === 'batch') updateBatchUI();
 }
 
+// ============================================================
 // ===== 开放平台 API 请求 =====
+// ============================================================
 async function openApi(path, method = 'POST', body = {}) {
   const url = S.openListUrl + path;
   const options = {
@@ -717,7 +706,9 @@ async function openApi(path, method = 'POST', body = {}) {
   return d;
 }
 
+// ============================================================
 // ===== 文件列表加载 =====
+// ============================================================
 async function loadDir(parentId) {
   const listEl = document.getElementById('file-list');
   listEl.innerHTML = '<div class="loading"><div class="spin dark" style="margin:0 auto 8px;"></div>加载中...</div>';
@@ -849,7 +840,9 @@ async function apiOfficial(method, path, body, params) {
   return d;
 }
 
+// ============================================================
 // ===== CRC32 签名 =====
+// ============================================================
 function crc32(d) {
   const t = new Uint32Array(256);
   for (let i = 0; i < 256; i++) { let c = i; for (let j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[i] = c; }
@@ -871,7 +864,9 @@ function signP(p) {
 }
 function buildUrl(p) { return p + '?' + signP(p); }
 
+// ============================================================
 // ===== 渲染文件列表 =====
+// ============================================================
 function renderCrumb() {
   const el = document.getElementById('crumb-bar');
   el.innerHTML = S.stack.map((d, i) =>
@@ -883,36 +878,17 @@ function renderCrumb() {
 function renderFiles(fs) {
   const listEl = document.getElementById('file-list');
   if (fs.length === 0) { listEl.innerHTML = '<div class="file-empty">📭 此目录为空</div>'; return; }
-  
-  // 排序：文件夹在前，文件在后
-  fs.sort((a, b) => {
-    const aIsDir = a.Type === 1 || a.type === 1 || a.IsDir;
-    const bIsDir = b.Type === 1 || b.type === 1 || b.IsDir;
-    if (aIsDir && !bIsDir) return -1;
-    if (!aIsDir && bIsDir) return 1;
-    return (a.FileName || '').localeCompare(b.FileName || '');
-  });
-  
   listEl.innerHTML = fs.map(f => {
     const isDir = f.Type === 1 || f.type === 1 || f.IsDir;
     const icon = isDir ? '📁' : '📄';
     const sel = S.sel?.fileId === f.FileId;
-    const fid = f.FileId || f.fileId || 0;
-    const fname = f.FileName || f.filename || '';
-    const fsize = f.Size || f.size || 0;
-    const fetag = f.Etag || f.etag || '';
-    const ftype = isDir ? 1 : 0;
-    const fpath = f.ParentPath || f.parentPath || '';
-    return '<div class="file-item' + (sel ? ' selected' : '') + '" style="display:flex;align-items:center;gap:6px;" data-id="' + fid + '" data-name="' + esc(fname) + '" data-size="' + fsize + '" data-etag="' + esc(fetag) + '" data-type="' + ftype + '" data-path="' + esc(fpath) + '">' +
-      '<input type="checkbox" class="file-chk" data-id="' + fid + '" data-name="' + esc(fname) + '" data-type="' + ftype + '" data-size="' + fsize + '" data-etag="' + esc(fetag) + '" onclick="event.stopPropagation();updateSelCount()">' +
-      '<div style="flex:1;display:flex;align-items:center;gap:8px;min-width:0;cursor:pointer;" onclick="' + (isDir ? 'loadDir(' + fid + ')' : '') + '">' +
-        '<div class="file-item-icon">' + icon + '</div>' +
-        '<div class="file-item-info">' +
-          '<div class="file-item-name">' + esc(fname) + '</div>' +
-          '<div class="file-item-meta">' + (isDir ? '文件夹' : fmtSize(fsize)) + '</div>' +
-        '</div>' +
+    return '<div class="file-item' + (sel ? ' selected' : '') + '" data-id="' + f.FileId + '" data-name="' + esc(f.FileName) + '" data-size="' + f.Size + '" data-etag="' + esc(f.Etag || '') + '" data-type="' + f.Type + '" data-path="' + esc(f.ParentPath || '') + '" onclick="onItemClick(event,this)">' +
+      '<div class="file-item-icon">' + icon + '</div>' +
+      '<div class="file-item-info">' +
+        '<div class="file-item-name">' + esc(f.FileName) + '</div>' +
+        '<div class="file-item-meta">' + (isDir ? '文件夹' : fmtSize(f.Size)) + '</div>' +
       '</div>' +
-      '<button class="file-item-btn" onclick="event.stopPropagation();pickItem(this)" data-id="' + fid + '" data-name="' + esc(fname) + '" data-size="' + fsize + '" data-etag="' + esc(fetag) + '" data-type="' + ftype + '">' + (sel ? '✓ 已选' : '选择') + '</button>' +
+      '<button class="file-item-btn" onclick="event.stopPropagation();pickItem(this)">' + (sel ? '✓ 已选' : '选择') + '</button>' +
     '</div>';
   }).join('');
 }
@@ -923,8 +899,7 @@ function onItemClick(e, el) {
 
 function pickItem(btn) {
   const el = btn.closest('.file-item');
-  const btnType = btn.dataset.type || el.dataset.type;
-  if (btnType === '1' || btnType === 1) { toast('请选择文件', 'error'); return; }
+  if (el.dataset.type === '1') { toast('请选择文件', 'error'); return; }
   const isSel = S.sel?.fileId === el.dataset.id;
   document.querySelectorAll('.file-item').forEach(it => { it.classList.remove('selected'); it.querySelector('.file-item-btn').textContent = '选择'; });
   if (!isSel) {
@@ -959,7 +934,9 @@ function doSearch(kw) {
   renderFiles(S.files.filter(f => f.FileName.toLowerCase().includes(k)));
 }
 
+// ============================================================
 // ===== 生成秒传 =====
+// ============================================================
 async function genFromCloud() {
   if (!S.sel) { toast('请先选择一个文件', 'error'); return; }
   const btn = document.getElementById('btn-gen-cloud');
@@ -1014,7 +991,9 @@ async function genFastlinkOpen(file) {
   return '';
 }
 
+// ============================================================
 // ===== 批量生成 =====
+// ============================================================
 function updateBatchUI() {
   const curDirData = S.curDir !== '0' ? S.files.find(f => String(f.FileId) === String(S.curDir)) : null;
   const hasDir = S.curDir !== '0';
@@ -1216,7 +1195,9 @@ function downloadBatchZip() {
   toast('下载开始！', 'success');
 }
 
+// ============================================================
 // ===== 分享解析 =====
+// ============================================================
 async function shareGen() {
   const shareUrl = document.getElementById('inp-share-url').value.trim();
   const sharePwd = document.getElementById('inp-share-pwd').value.trim();
@@ -1450,7 +1431,9 @@ function downloadShareZip() {
   toast('下载开始！', 'success');
 }
 
+// ============================================================
 // ===== 保存秒传 =====
+// ============================================================
 async function doSave() {
   const txt = document.getElementById('inp-save').value.trim();
   if (!txt) { toast('请输入秒传内容', 'error'); return; }
@@ -1522,7 +1505,9 @@ function retryFail() {
   toast('已载入 ' + S.failList.length + ' 个失败文件', 'info'); doSave();
 }
 
+// ============================================================
 // ===== 复制 =====
+// ============================================================
 function copyLink(type) {
   let txt = '';
   if (type === 'cloud') txt = document.getElementById('cloud-link').textContent;
@@ -1531,7 +1516,9 @@ function copyLink(type) {
   navigator.clipboard.writeText(txt).then(() => toast('已复制！', 'success')).catch(() => toast('复制失败', 'error'));
 }
 
+// ============================================================
 // ===== 工具函数 =====
+// ============================================================
 function fmtSize(b) {
   if (b < 1024) return b + ' B';
   if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
@@ -1545,242 +1532,199 @@ function saveAs(blob, filename) {
   a.href = url; a.download = filename; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"e1476aa12fa74adb8cebd8f1c34a74a1","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous">
 
-// ===== 批量分享功能（稳定版，合并去重） =====
-let bsFolders = [];
-let bsResults = [];
-let bsRunning = false;
+// ============================================================
+// ===== 批量分享一级子文件夹（独立命名版，不影响原文件读取） =====
+// ============================================================
+let bsfFolders = [];
+let bsfResults = [];
+let bsfRunning = false;
 
-function bsGenPwd() {
+function bsfGenPwd() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let pwd = '';
   for (let i = 0; i < 4; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
   return pwd;
 }
 
-function getShareKeyFromData(data) {
+function bsfShareKey(data) {
   const d = data && data.data ? data.data : {};
   return d.shareKey || d.ShareKey || d.share_key || d.key || '';
 }
 
-function getSharePwdFromData(data, fallbackPwd) {
+function bsfSharePwd(data, fallback) {
   const d = data && data.data ? data.data : {};
-  return d.sharePwd || d.SharePwd || d.share_pwd || fallbackPwd || '';
+  return d.sharePwd || d.SharePwd || d.share_pwd || fallback || '';
 }
 
-function buildShareUrl(shareKey) {
-  if (!shareKey) return '';
-  if (/^https?:\/\//i.test(shareKey)) return shareKey;
-  return 'https://www.123pan.com/s/' + shareKey;
+function bsfShareUrl(key) {
+  if (!key) return '';
+  if (/^https?:\/\//i.test(key)) return key;
+  return 'https://www.123pan.com/s/' + key;
 }
 
-function officialHeaders() {
-  if (!S.officialToken) throw new Error('请先登录123云盘账号');
-  return {
-    'Content-Type': 'application/json;charset=UTF-8',
-    'Authorization': 'Bearer ' + S.officialToken,
-    'Origin': OFFICIAL_API.base,
-    'Referer': OFFICIAL_API.base + '/',
-    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
-    'platform': 'web',
-    'app-version': '3'
-  };
-}
-
-// 列出指定父目录下的一级子文件夹
-async function bsListFolders() {
-  const parentIdText = document.getElementById('inp-bs-parent').value.trim();
-  if (!parentIdText) { toast('请输入父文件夹ID', 'error'); return; }
+async function bsfListFolders() {
+  const parentText = document.getElementById('inp-bsf-parent').value.trim();
+  if (!parentText) { toast('请输入父文件夹ID', 'error'); return; }
   if (!S.officialToken) { toast('请先登录123云盘账号', 'error'); return; }
-
-  const parentId = parseInt(parentIdText, 10);
+  const parentId = parseInt(parentText, 10);
   if (Number.isNaN(parentId)) { toast('父文件夹ID必须是数字', 'error'); return; }
 
-  const fileList = document.getElementById('bs-folder-list');
-  fileList.innerHTML = '<div class="loading"><div class="spin dark" style="margin:0 auto 8px;"></div>加载中...</div>';
-  document.getElementById('btn-bs-share').disabled = true;
-
+  const listEl = document.getElementById('bsf-folder-list');
+  listEl.innerHTML = '<div class="loading"><div class="spin dark" style="margin:0 auto 8px;"></div>加载中...</div>';
+  document.getElementById('btn-bsf-share').disabled = true;
   try {
-    bsFolders = await bsGetChildFolders(parentId);
-    if (bsFolders.length === 0) {
-      fileList.innerHTML = '<div style="color:var(--sub);font-size:13px;text-align:center;padding:20px;">未找到一级子文件夹</div>';
+    bsfFolders = await bsfGetChildFolders(parentId);
+    if (!bsfFolders.length) {
+      listEl.innerHTML = '<div style="color:var(--sub);font-size:13px;text-align:center;padding:20px;">未找到一级子文件夹</div>';
       return;
     }
-
-    let html = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">找到 ' + bsFolders.length + ' 个一级子文件夹：</div>';
-    html += bsFolders.map(f =>
+    let html = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">找到 ' + bsfFolders.length + ' 个一级子文件夹：</div>';
+    html += bsfFolders.map(f =>
       '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
-        '<span style="font-size:18px;">📁</span>' +
-        '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
-        '<span style="color:var(--sub);font-size:11px;">ID ' + f.file_id + '</span>' +
+      '<span style="font-size:18px;">📁</span>' +
+      '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+      '<span style="color:var(--sub);font-size:11px;">ID ' + f.file_id + '</span>' +
       '</div>'
     ).join('');
-    fileList.innerHTML = html;
-    document.getElementById('btn-bs-share').disabled = false;
-    toast('找到 ' + bsFolders.length + ' 个子文件夹', 'success');
+    listEl.innerHTML = html;
+    document.getElementById('btn-bsf-share').disabled = false;
+    toast('找到 ' + bsfFolders.length + ' 个子文件夹', 'success');
   } catch (e) {
-    fileList.innerHTML = '<div style="color:var(--danger);font-size:13px;">❌ ' + esc(e.message) + '</div>';
+    listEl.innerHTML = '<div style="color:var(--danger);font-size:13px;">❌ ' + esc(e.message) + '</div>';
     toast('列出失败：' + e.message, 'error');
   }
 }
 
-async function bsGetChildFolders(parentFileId) {
+async function bsfGetChildFolders(parentFileId) {
   const folders = [];
-  let lastFileId = null;
+  let page = 1;
   while (true) {
-    const params = { parentFileId: String(parentFileId), limit: '100' };
-    if (lastFileId !== null) params.lastFileId = String(lastFileId);
-    const d = await apiOfficial('GET', '/api/v2/file/list', null, params);
-    const fileList = (d.data && d.data.fileList) || [];
-    for (const item of fileList) {
-      const type = item.type ?? item.Type;
-      const trashed = item.trashed ?? item.Trashed ?? 0;
+    const d = await apiOfficial('GET', '/b/api/file/list/new', null, {
+      driveId: '0', limit: '100', next: '0', orderBy: 'file_id', orderDirection: 'desc',
+      parentFileId: String(parentFileId), trashed: 'false', SearchData: '', Page: String(page),
+      OnlyLookAbnormalFile: '0', event: 'homeListFile', operateType: '4', inDirectSpace: 'false'
+    });
+    const fs = d?.data?.InfoList || [];
+    for (const item of fs) {
+      const type = item.Type ?? item.type;
+      const trashed = item.Trashed ?? item.trashed ?? 0;
       if (Number(type) === 1 && Number(trashed) === 0) {
-        folders.push({
-          file_id: item.fileId ?? item.FileId ?? item.fileID ?? item.FileID,
-          name: item.filename || item.FileName || item.name || String(item.fileId || item.FileId)
-        });
+        folders.push({ file_id: item.FileId ?? item.fileId, name: item.FileName || item.filename || String(item.FileId || item.fileId) });
       }
     }
-    const nextId = d.data ? (d.data.lastFileId ?? d.data.LastFileId ?? -1) : -1;
-    if (Number(nextId) === -1) break;
-    lastFileId = nextId;
+    if (fs.length < 100 || d?.data?.Next === '-1') break;
+    page++; if (page > 50) break;
   }
   return folders;
 }
 
-// 单个创建分享，默认生成4位随机提取码；若接口不接受密码则自动退化为无密码
-async function bsCreateShare(fileId, shareName) {
-  const pwd = bsGenPwd();
+async function bsfCreateShare(fileId, shareName) {
+  const pwd = bsfGenPwd();
   const bodyWithPwd = { shareName, shareExpire: 0, fileIDList: String(fileId), sharePwd: pwd };
   const bodyNoPwd = { shareName, shareExpire: 0, fileIDList: String(fileId) };
 
   async function postCreate(body) {
-    const resp = await fetch(OFFICIAL_API.base + '/api/v1/share/create', {
+    const r = await fetch(OFFICIAL_API.base + '/api/v1/share/create', {
       method: 'POST',
-      headers: officialHeaders(),
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+        'Authorization': 'Bearer ' + S.officialToken,
+        'Origin': OFFICIAL_API.base,
+        'Referer': OFFICIAL_API.base + '/',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
+        'platform': 'web',
+        'app-version': '3'
+      },
       body: JSON.stringify(body)
     });
-    let data;
-    try { data = await resp.json(); } catch (_) { throw new Error('创建分享返回非JSON，HTTP ' + resp.status); }
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    if (data.code !== 0 && data.code !== '0' && data.code !== 200) throw new Error(data.message || data.msg || '创建分享失败');
-    const shareKey = getShareKeyFromData(data);
-    if (!shareKey) throw new Error('未返回shareKey');
-    return { shareKey, sharePwd: getSharePwdFromData(data, body.sharePwd || '') };
+    let d;
+    try { d = await r.json(); } catch (_) { throw new Error('创建分享返回非JSON，HTTP ' + r.status); }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (d.code !== 0 && d.code !== '0' && d.code !== 200) throw new Error(d.message || d.msg || '创建分享失败');
+    const key = bsfShareKey(d);
+    if (!key) throw new Error('未返回shareKey');
+    return { shareKey: key, sharePwd: bsfSharePwd(d, body.sharePwd || '') };
   }
 
-  try {
-    return await postCreate(bodyWithPwd);
-  } catch (e) {
-    // 兼容部分网页接口不支持 sharePwd 的情况
-    if (String(e.message).includes('pwd') || String(e.message).includes('密码') || String(e.message).includes('参数')) {
-      return await postCreate(bodyNoPwd);
-    }
+  try { return await postCreate(bodyWithPwd); }
+  catch (e) {
+    if (String(e.message).includes('pwd') || String(e.message).includes('密码') || String(e.message).includes('参数')) return await postCreate(bodyNoPwd);
     throw e;
   }
 }
 
-// 开始批量分享父目录下的一级子文件夹
-async function bsStartShare() {
-  if (bsRunning) return;
-  if (!bsFolders.length) { toast('请先列出子文件夹', 'error'); return; }
-  bsRunning = true;
-  bsResults = [];
-
-  const prog = document.getElementById('bs-prog');
-  const statusEl = document.getElementById('bs-status');
-  const pctEl = document.getElementById('bs-pct');
-  const fillEl = document.getElementById('bs-fill');
-  const resultCard = document.getElementById('bs-result-card');
-  const resultList = document.getElementById('bs-result-list');
-
+async function bsfStartShare() {
+  if (bsfRunning) return;
+  if (!bsfFolders.length) { toast('请先列出子文件夹', 'error'); return; }
+  bsfRunning = true;
+  bsfResults = [];
+  const prog = document.getElementById('bsf-prog');
+  const statusEl = document.getElementById('bsf-status');
+  const pctEl = document.getElementById('bsf-pct');
+  const fillEl = document.getElementById('bsf-fill');
+  const resultCard = document.getElementById('bsf-result-card');
   prog.style.display = 'block';
   resultCard.style.display = 'none';
-  document.getElementById('btn-bs-share').disabled = true;
-  document.getElementById('btn-bs-list').disabled = true;
+  document.getElementById('btn-bsf-share').disabled = true;
+  document.getElementById('btn-bsf-list').disabled = true;
 
-  const total = bsFolders.length;
-  for (let i = 0; i < total; i++) {
-    const folder = bsFolders[i];
-    const pct = Math.round(((i + 1) / total) * 100);
-    statusEl.textContent = '正在分享: ' + folder.name + ' (' + (i + 1) + '/' + total + ')';
+  for (let i = 0; i < bsfFolders.length; i++) {
+    const f = bsfFolders[i];
+    const pct = Math.round((i + 1) / bsfFolders.length * 100);
+    statusEl.textContent = '正在分享: ' + f.name + ' (' + (i + 1) + '/' + bsfFolders.length + ')';
     pctEl.textContent = pct + '%';
     fillEl.style.width = pct + '%';
-
     try {
-      const result = await bsCreateShare(folder.file_id, folder.name);
-      bsResults.push({
-        name: folder.name,
-        file_id: folder.file_id,
-        share_key: result.shareKey,
-        share_url: buildShareUrl(result.shareKey),
-        pwd: result.sharePwd || '',
-        status: '✅'
-      });
+      const ret = await bsfCreateShare(f.file_id, f.name);
+      bsfResults.push({ name: f.name, file_id: f.file_id, share_key: ret.shareKey, share_url: bsfShareUrl(ret.shareKey), pwd: ret.sharePwd || '', error: '' });
     } catch (e) {
-      bsResults.push({
-        name: folder.name,
-        file_id: folder.file_id,
-        share_key: '',
-        share_url: '',
-        pwd: '',
-        status: '❌',
-        error: e.message
-      });
+      bsfResults.push({ name: f.name, file_id: f.file_id, share_key: '', share_url: '', pwd: '', error: e.message });
     }
-    if (i < total - 1) await new Promise(r => setTimeout(r, 300));
+    if (i < bsfFolders.length - 1) await new Promise(r => setTimeout(r, 300));
   }
 
-  bsRenderResults();
-  const okCount = bsResults.filter(r => r.share_key).length;
-  statusEl.textContent = '✅ 完成！成功: ' + okCount + '/' + total;
-  bsRunning = false;
-  document.getElementById('btn-bs-share').disabled = false;
-  document.getElementById('btn-bs-list').disabled = false;
-  toast('批量分享完成！成功 ' + okCount + '/' + total, okCount ? 'success' : 'warn');
+  bsfRenderResults();
+  const ok = bsfResults.filter(r => r.share_key).length;
+  statusEl.textContent = '✅ 完成！成功: ' + ok + '/' + bsfFolders.length;
+  bsfRunning = false;
+  document.getElementById('btn-bsf-share').disabled = false;
+  document.getElementById('btn-bsf-list').disabled = false;
+  toast('批量分享完成！成功 ' + ok + '/' + bsfFolders.length, ok ? 'success' : 'warn');
 }
 
-function bsRenderResults() {
-  const resultCard = document.getElementById('bs-result-card');
-  const resultList = document.getElementById('bs-result-list');
-  const okCount = bsResults.filter(r => r.share_key).length;
-  document.getElementById('bs-result-count').textContent = '(成功 ' + okCount + ' / 总计 ' + bsResults.length + ')';
-
-  let html = '';
-  bsResults.forEach((r, i) => {
+function bsfRenderResults() {
+  const resultCard = document.getElementById('bsf-result-card');
+  const resultList = document.getElementById('bsf-result-list');
+  const ok = bsfResults.filter(r => r.share_key).length;
+  document.getElementById('bsf-result-count').textContent = '(成功 ' + ok + ' / 总计 ' + bsfResults.length + ')';
+  resultList.innerHTML = bsfResults.map((r, i) => {
     const isOk = !!r.share_key;
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">';
-    html += '<span style="font-size:16px;">' + (isOk ? '✅' : '❌') + '</span>';
-    html += '<span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + esc(r.name) + '">' + esc(r.name) + '</span>';
-    if (isOk) {
-      html += '<span style="color:var(--sub);font-size:11px;flex-shrink:0;">密码: ' + (r.pwd || '无') + '</span>';
-      html += '<button class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:11px;flex-shrink:0;" onclick="bsCopyOne(' + i + ')">复制</button>';
-    } else {
-      html += '<span style="color:var(--danger);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(r.error || '') + '">' + esc(r.error || '失败') + '</span>';
-    }
-    html += '</div>';
-  });
-  resultList.innerHTML = html;
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
+      '<span style="font-size:16px;">' + (isOk ? '✅' : '❌') + '</span>' +
+      '<span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + esc(r.name) + '">' + esc(r.name) + '</span>' +
+      (isOk ? '<span style="color:var(--sub);font-size:11px;flex-shrink:0;">密码: ' + (r.pwd || '无') + '</span><button class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:11px;flex-shrink:0;" onclick="bsfCopyOne(' + i + ')">复制</button>' : '<span style="color:var(--danger);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(r.error || '') + '">' + esc(r.error || '失败') + '</span>') +
+      '</div>';
+  }).join('');
   resultCard.style.display = 'block';
 }
 
-function bsCopyOne(index) {
-  const r = bsResults[index];
+function bsfCopyOne(index) {
+  const r = bsfResults[index];
   if (!r || !r.share_key) return;
-  const txt = r.name + '\n' + r.share_url + (r.pwd ? '\n提取码: ' + r.pwd : '');
-  navigator.clipboard.writeText(txt).then(() => toast('已复制！', 'success')).catch(() => toast('复制失败', 'error'));
+  navigator.clipboard.writeText(r.name + '\n' + r.share_url + (r.pwd ? '\n提取码: ' + r.pwd : '')).then(() => toast('已复制！', 'success')).catch(() => toast('复制失败', 'error'));
 }
 
-function bsCopyAll() {
-  const ok = bsResults.filter(r => r.share_key);
-  const txt = ok.map(r => r.name + '\n' + r.share_url + (r.pwd ? '\n提取码: ' + r.pwd : '')).join('\n\n');
+function bsfCopyAll() {
+  const txt = bsfResults.filter(r => r.share_key).map(r => r.name + '\n' + r.share_url + (r.pwd ? '\n提取码: ' + r.pwd : '')).join('\n\n');
   if (!txt) { toast('没有可复制的内容', 'error'); return; }
   navigator.clipboard.writeText(txt).then(() => toast('已复制全部链接+密码！', 'success')).catch(() => toast('复制失败', 'error'));
 }
 
-function bsExportCSV() {
-  const ok = bsResults.filter(r => r.share_key);
+function bsfExportCSV() {
+  const ok = bsfResults.filter(r => r.share_key);
   if (!ok.length) { toast('没有可导出的数据', 'error'); return; }
   let csv = '\uFEFF文件夹名称,分享链接,提取码\n';
   ok.forEach(r => { csv += '"' + r.name.replace(/"/g, '""') + '","' + r.share_url + '","' + (r.pwd || '') + '"\n'; });
@@ -1788,66 +1732,19 @@ function bsExportCSV() {
   toast('已导出CSV！', 'success');
 }
 
-// 批量分享当前勾选的文件/文件夹（保留原页面按钮能力）
-async function batchShare() {
-  const files = getSelectedFiles();
-  if (!files.length) { toast('请先选择文件', 'error'); return; }
-  bsResults = [];
-  toast('开始批量分享 ' + files.length + ' 个项目...', 'info');
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i];
-    try {
-      const result = await bsCreateShare(f.file_id, f.name);
-      bsResults.push({ name: f.name, file_id: f.file_id, share_key: result.shareKey, share_url: buildShareUrl(result.shareKey), pwd: result.sharePwd || '', status: '✅' });
-    } catch (e) {
-      bsResults.push({ name: f.name, file_id: f.file_id, share_key: '', share_url: '', pwd: '', status: '❌', error: e.message });
-    }
-    if (i < files.length - 1) await new Promise(r => setTimeout(r, 300));
-  }
-  showBatchResult('share');
-}
-
-// 兼容旧的结果展示函数
-function showBatchResult(type) {
-  const ok = bsResults.filter(r => r.share_key);
-  const fail = bsResults.filter(r => !r.share_key);
-  let html = '<div class="card" style="margin-top:12px;" id="batch-result">';
-  html += '<div style="font-size:14px;font-weight:700;margin-bottom:10px;">📋 批量分享结果</div>';
-  html += '<div style="font-size:13px;color:var(--sub);margin-bottom:10px;">成功: ' + ok.length + ' / 失败: ' + fail.length + ' / 总计: ' + bsResults.length + '</div>';
-  bsResults.forEach((r, i) => {
-    html += '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">';
-    html += '<span>' + (r.share_key ? '✅' : '❌') + '</span>';
-    html += '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.name) + '</span>';
-    if (r.share_key) html += '<button class="btn btn-outline btn-sm" onclick="bsCopyOne(' + i + ')">复制</button>';
-    else html += '<span style="color:var(--danger);font-size:11px;">' + esc(r.error || '失败') + '</span>';
-    html += '</div>';
-  });
-  html += '<div style="margin-top:12px;display:flex;gap:8px;"><button class="btn btn-primary btn-sm" onclick="bsCopyAll()">📋 复制全部链接</button><button class="btn btn-purple btn-sm" onclick="bsExportCSV()">📊 导出CSV</button></div></div>';
-  const fileList = document.getElementById('file-list');
-  const existing = document.getElementById('batch-result');
-  if (existing) existing.remove();
-  const div = document.createElement('div');
-  div.innerHTML = html;
-  fileList.parentNode.insertBefore(div.firstChild, fileList.nextSibling);
-}
-
-// 导出账号全部分享链接（open-api脚本里的 list_all_shares 前端版，尽量兼容）
-async function bsExportAllSharesCSV() {
+async function bsfExportAllSharesCSV() {
   if (!S.officialToken) { toast('请先登录123云盘账号', 'error'); return; }
   toast('正在获取全部分享列表...', 'info');
   try {
     const rows = [];
-    let lastShareId = 0;
-    let guard = 0;
+    let lastShareId = 0, guard = 0;
     while (true) {
       const d = await apiOfficial('GET', '/api/v1/share/list', null, { limit: '100', lastShareId: String(lastShareId) });
       const list = (d.data && (d.data.shareList || d.data.ShareList)) || [];
       for (const s of list) {
         const key = s.shareKey || s.ShareKey || '';
         if (!key) continue;
-        const pwd = s.sharePwd || s.SharePwd || '';
-        const name = s.shareName || s.ShareName || s.shareId || s.ShareId || '';
-        rows.push({ name, url: buildShareUrl(key), pwd });
+        rows.push({ name: s.shareName || s.ShareName || s.shareId || s.ShareId || '', url: bsfShareUrl(key), pwd: s.sharePwd || s.SharePwd || '' });
       }
       const nextId = d.data ? (d.data.lastShareId ?? d.data.LastShareId ?? -1) : -1;
       if (Number(nextId) === -1) break;
@@ -1863,109 +1760,6 @@ async function bsExportAllSharesCSV() {
     toast('导出全部分享失败：' + e.message, 'error');
   }
 }
-
-// ============================================================
-// ===== 秒传功能（合并批量秒传） =====
-// ============================================================
-let mcResults = [];
-
-// 选中文件生成秒传（在页面显示结果，不跳转）
-function genMiaochuanFromCloud() {
-  const files = getSelectedFiles();
-  if (files.length === 0) {
-    toast('请先选择文件', 'error');
-    return;
-  }
-
-  mcResults = [];
-  const fileOnly = files.filter(f => f.type !== 1);
-  const folderOnly = files.filter(f => f.type === 1);
-
-  fileOnly.forEach(f => {
-    mcResults.push({
-      name: f.name,
-      etag: f.etag,
-      size: f.size,
-      link: '123FLCPV2$' + f.etag + '#' + f.size + '#' + f.name,
-      type: 'file'
-    });
-  });
-
-  folderOnly.forEach(f => {
-    mcResults.push({
-      name: f.name,
-      etag: '',
-      size: 0,
-      link: '(文件夹无法生成秒传)',
-      type: 'folder'
-    });
-  });
-
-  // 显示结果
-  const resultDiv = document.getElementById('miaochuan-result');
-  const listDiv = document.getElementById('mc-result-list');
-  const countEl = document.getElementById('mc-count');
-
-  countEl.textContent = '(' + fileOnly.length + '个文件' + (folderOnly.length > 0 ? '，' + folderOnly.length + '个文件夹(跳过)' : '') + ')';
-
-  let html = '';
-  mcResults.forEach((r, i) => {
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">';
-    html += '<span style="font-size:16px;">' + (r.type === 'file' ? '📄' : '📁') + '</span>';
-    html += '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(r.link) + '">' + esc(r.name) + '</span>';
-    if (r.type === 'file') {
-      html += '<span style="color:var(--sub);font-size:11px;">' + fmtSize(r.size) + '</span>';
-    }
-    html += '</div>';
-  });
-  listDiv.innerHTML = html;
-  resultDiv.style.display = 'block';
-
-  toast('已生成 ' + fileOnly.length + ' 个秒传链接！', 'success');
-}
-
-// 复制全部秒传链接
-function mcCopyAll() {
-  const lines = mcResults.filter(r => r.type === 'file').map(r => r.link);
-  if (lines.length === 0) { toast('没有可复制的秒传链接', 'error'); return; }
-  const txt = lines.join('\n');
-  navigator.clipboard.writeText(txt).then(() => toast('已复制 ' + lines.length + ' 个秒传链接！', 'success')).catch(() => toast('复制失败', 'error'));
-}
-
-// 获取选中的文件
-function getSelectedFiles() {
-  const files = [];
-  document.querySelectorAll('.file-chk:checked').forEach(chk => {
-    files.push({
-      file_id: parseInt(chk.dataset.id),
-      name: chk.dataset.name,
-      type: parseInt(chk.dataset.type),
-      size: parseInt(chk.dataset.size || 0),
-      etag: chk.dataset.etag || ''
-    });
-  });
-  return files;
-}
-
-// 全选/取消全选
-function toggleSelectAll() {
-  const checked = document.getElementById('chk-select-all').checked;
-  document.querySelectorAll('.file-chk').forEach(chk => { chk.checked = checked; });
-  updateSelCount();
-}
-
-// 更新选中计数
-function updateSelCount() {
-  const checked = document.querySelectorAll('.file-chk:checked');
-  document.getElementById('sel-count').textContent = '已选 ' + checked.length + ' 项';
-  const hasSel = checked.length > 0;
-  const btnShare = document.getElementById('btn-batch-share');
-  const btnMc = document.getElementById('btn-batch-miaochuan');
-  if (btnShare) btnShare.disabled = !hasSel;
-  if (btnMc) btnMc.disabled = !hasSel;
-}
-
 </script>
-
 </body>
 </html>
