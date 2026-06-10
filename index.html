@@ -1570,64 +1570,70 @@ async function bsfCreateShare(fileId, shareName) {
   const idStr = String(fileId);
   const idNum = Number(fileId);
 
+  // 网页端接口参数名与 open-api 不完全一致，因此多组参数自动尝试
   const bodies = [
-    { shareName: shareName, shareExpire: 0, fileIDList: idStr, sharePwd: pwd },
-    { shareName: shareName, shareExpire: 0, fileIdList: idStr, sharePwd: pwd },
-    { ShareName: shareName, ShareExpire: 0, FileIDList: idStr, SharePwd: pwd },
-    { shareName: shareName, shareExpire: 0, fileIDList: idStr },
-    { shareName: shareName, shareExpire: 0, fileIdList: idStr },
-    { ShareName: shareName, ShareExpire: 0, FileIDList: idStr },
-    { shareName: shareName, shareExpire: 0, fileIDList: [idNum], sharePwd: pwd },
-    { shareName: shareName, shareExpire: 0, fileIdList: [idNum], sharePwd: pwd },
-    { shareName: shareName, shareExpire: 0, fileIDList: [idNum] },
-    { shareName: shareName, shareExpire: 0, fileIdList: [idNum] }
+    { shareName, shareExpire: 0, fileIDList: idStr, sharePwd: pwd, expiration: 0, shareModality: 0, renameVisible: 1, fileNum: 1 },
+    { shareName, shareExpire: 0, fileIdList: idStr, sharePwd: pwd, expiration: 0, shareModality: 0, renameVisible: 1, fileNum: 1 },
+    { shareName, shareExpire: 0, fileIdList: [idNum], sharePwd: pwd, expiration: 0, shareModality: 0, renameVisible: 1, fileNum: 1 },
+    { shareName, shareExpire: 0, fileIDList: [idNum], sharePwd: pwd, expiration: 0, shareModality: 0, renameVisible: 1, fileNum: 1 },
+    { shareName, expiration: 0, sharePwd: pwd, shareModality: 0, renameVisible: 1, fileIdList: [idNum], fileNum: 1 },
+    { shareName, expiration: 0, sharePwd: pwd, shareModality: 0, renameVisible: 1, fileIDList: idStr, fileNum: 1 },
+    // 无密码 fallback
+    { shareName, shareExpire: 0, fileIDList: idStr, expiration: 0, shareModality: 0, renameVisible: 1, fileNum: 1 },
+    { shareName, shareExpire: 0, fileIdList: [idNum], expiration: 0, shareModality: 0, renameVisible: 1, fileNum: 1 }
+  ];
+
+  const endpoints = [
+    // 官方网页生产 API 前缀，来自官方 umi.js: postUrlPath=https://api.123278.com/b/api/
+    { url: 'https://api.123278.com/b/api/share/create', signPath: 'share/create' },
+    { url: 'https://api.123278.com/b/api/share/create', signPath: '/b/api/share/create' },
+    // 网页同域 fallback
+    { url: OFFICIAL_API.base + '/b/api/share/create', signPath: '/b/api/share/create' },
+    // 旧 open-api 风格 fallback，很多网页端会 404
+    { url: OFFICIAL_API.base + '/api/v1/share/create', signPath: null }
   ];
 
   let lastErr = '';
 
-  async function parseResult(d, fallbackPwd) {
+  async function postCreate(ep, body) {
+    let url = ep.url;
+    // 网页端接口一般需要签名参数，兼容不同签名 path
+    if (ep.signPath) {
+      url += (url.includes('?') ? '&' : '?') + signP(ep.signPath);
+    }
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+        'Authorization': 'Bearer ' + S.officialToken,
+        'Origin': OFFICIAL_API.base,
+        'Referer': OFFICIAL_API.base + '/',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
+        'platform': 'web',
+        'app-version': '3'
+      },
+      body: JSON.stringify(body)
+    });
+    const text = await r.text();
+    let d;
+    try { d = JSON.parse(text); }
+    catch (_) { throw new Error('创建分享返回非JSON，HTTP ' + r.status + ' @ ' + ep.url); }
+    if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + (d.message || d.msg || JSON.stringify(d)).slice(0, 120));
+    if (d.code !== 0 && d.code !== '0' && d.code !== 200) throw new Error(d.message || d.msg || ('创建分享失败 code=' + d.code));
     const key = bsfShareKey(d);
-    if (!key) throw new Error('未返回shareKey');
-    return { shareKey: key, sharePwd: bsfSharePwd(d, fallbackPwd || '') };
+    if (!key) throw new Error('未返回shareKey，返回: ' + JSON.stringify(d).slice(0, 160));
+    return { shareKey: key, sharePwd: bsfSharePwd(d, body.sharePwd || '') };
   }
 
-  // 优先尝试网页端签名接口
-  for (const body of bodies) {
-    try {
-      const d = await apiOfficial('POST', '/b/api/share/create', body);
-      return await parseResult(d, body.sharePwd || body.SharePwd || '');
-    } catch (e) {
-      lastErr = e.message || String(e);
+  for (const ep of endpoints) {
+    for (const body of bodies) {
+      try {
+        return await postCreate(ep, body);
+      } catch (e) {
+        lastErr = e.message || String(e);
+      }
     }
   }
-
-  // 再尝试 open-api 风格路径（部分环境可能代理到 www）
-  for (const body of bodies) {
-    try {
-      const r = await fetch(OFFICIAL_API.base + '/api/v1/share/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json;charset=UTF-8',
-          'Authorization': 'Bearer ' + S.officialToken,
-          'Origin': OFFICIAL_API.base,
-          'Referer': OFFICIAL_API.base + '/',
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
-          'platform': 'web',
-          'app-version': '3'
-        },
-        body: JSON.stringify(body)
-      });
-      const text = await r.text();
-      let d;
-      try { d = JSON.parse(text); } catch (_) { throw new Error('创建分享返回非JSON，HTTP ' + r.status); }
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      if (d.code !== 0 && d.code !== '0' && d.code !== 200) throw new Error(d.message || d.msg || '创建分享失败');
-      return await parseResult(d, body.sharePwd || body.SharePwd || '');
-    } catch (e) {
-      lastErr = e.message || String(e);
-    }
-  }
-
   throw new Error(lastErr || '创建分享失败');
 }
 
