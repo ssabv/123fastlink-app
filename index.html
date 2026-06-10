@@ -2189,6 +2189,11 @@ function toggleSelectAll() {
 function updateSelCount() {
   const checked = document.querySelectorAll('.file-chk:checked');
   document.getElementById('sel-count').textContent = '已选 ' + checked.length + ' 项';
+  const hasSel = checked.length > 0;
+  const btnShare = document.getElementById('btn-batch-share');
+  const btnMc = document.getElementById('btn-batch-miaochuan');
+  if (btnShare) btnShare.disabled = !hasSel;
+  if (btnMc) btnMc.disabled = !hasSel;
 }
 
 </script>
