@@ -892,7 +892,8 @@ function onItemClick(e, el) {
 
 function pickItem(btn) {
   const el = btn.closest('.file-item');
-  if (el.dataset.type === '1') { toast('请选择文件', 'error'); return; }
+  const btnType = btn.dataset.type || el.dataset.type;
+  if (btnType === '1' || btnType === 1) { toast('请选择文件', 'error'); return; }
   const isSel = S.sel?.fileId === el.dataset.id;
   document.querySelectorAll('.file-item').forEach(it => { it.classList.remove('selected'); it.querySelector('.file-item-btn').textContent = '选择'; });
   if (!isSel) {
