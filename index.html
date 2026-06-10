@@ -871,17 +871,36 @@ function renderCrumb() {
 function renderFiles(fs) {
   const listEl = document.getElementById('file-list');
   if (fs.length === 0) { listEl.innerHTML = '<div class="file-empty">📭 此目录为空</div>'; return; }
+  
+  // 排序：文件夹在前，文件在后
+  fs.sort((a, b) => {
+    const aIsDir = a.Type === 1 || a.type === 1 || a.IsDir;
+    const bIsDir = b.Type === 1 || b.type === 1 || b.IsDir;
+    if (aIsDir && !bIsDir) return -1;
+    if (!aIsDir && bIsDir) return 1;
+    return (a.FileName || '').localeCompare(b.FileName || '');
+  });
+  
   listEl.innerHTML = fs.map(f => {
     const isDir = f.Type === 1 || f.type === 1 || f.IsDir;
     const icon = isDir ? '📁' : '📄';
     const sel = S.sel?.fileId === f.FileId;
-    return '<div class="file-item' + (sel ? ' selected' : '') + '" data-id="' + f.FileId + '" data-name="' + esc(f.FileName) + '" data-size="' + f.Size + '" data-etag="' + esc(f.Etag || '') + '" data-type="' + f.Type + '" data-path="' + esc(f.ParentPath || '') + '" onclick="onItemClick(event,this)">' +
-      '<div class="file-item-icon">' + icon + '</div>' +
-      '<div class="file-item-info">' +
-        '<div class="file-item-name">' + esc(f.FileName) + '</div>' +
-        '<div class="file-item-meta">' + (isDir ? '文件夹' : fmtSize(f.Size)) + '</div>' +
+    const fid = f.FileId || f.fileId || 0;
+    const fname = f.FileName || f.filename || '';
+    const fsize = f.Size || f.size || 0;
+    const fetag = f.Etag || f.etag || '';
+    const ftype = isDir ? 1 : 0;
+    const fpath = f.ParentPath || f.parentPath || '';
+    return '<div class="file-item' + (sel ? ' selected' : '') + '" style="display:flex;align-items:center;gap:6px;" data-id="' + fid + '" data-name="' + esc(fname) + '" data-size="' + fsize + '" data-etag="' + esc(fetag) + '" data-type="' + ftype + '" data-path="' + esc(fpath) + '">' +
+      '<input type="checkbox" class="file-chk" data-id="' + fid + '" data-name="' + esc(fname) + '" data-type="' + ftype + '" data-size="' + fsize + '" data-etag="' + esc(fetag) + '" onclick="event.stopPropagation();updateSelCount()">' +
+      '<div style="flex:1;display:flex;align-items:center;gap:8px;min-width:0;cursor:pointer;" onclick="' + (isDir ? 'loadDir(' + fid + ')' : '') + '">' +
+        '<div class="file-item-icon">' + icon + '</div>' +
+        '<div class="file-item-info">' +
+          '<div class="file-item-name">' + esc(fname) + '</div>' +
+          '<div class="file-item-meta">' + (isDir ? '文件夹' : fmtSize(fsize)) + '</div>' +
+        '</div>' +
       '</div>' +
-      '<button class="file-item-btn" onclick="event.stopPropagation();pickItem(this)">' + (sel ? '✓ 已选' : '选择') + '</button>' +
+      '<button class="file-item-btn" onclick="event.stopPropagation();pickItem(this)" data-id="' + fid + '" data-name="' + esc(fname) + '" data-size="' + fsize + '" data-etag="' + esc(fetag) + '" data-type="' + ftype + '">' + (sel ? '✓ 已选' : '选择') + '</button>' +
     '</div>';
   }).join('');
 }
