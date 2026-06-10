@@ -309,6 +309,10 @@
       </div>
 
       <div class="crumb-bar" id="crumb-bar"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin:6px 0 10px;font-size:12px;color:var(--sub);">
+        <span>当前文件夹ID：<b id="cur-dir-id">0</b></span>
+        <button class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:11px;" onclick="copyCurDirId()">复制ID</button>
+      </div>
       <div class="file-list" id="file-list">
         <div class="loading" id="list-loading">
           <div class="spin dark" style="margin:0 auto 8px;"></div>
@@ -708,6 +712,8 @@ async function loadDir(parentId) {
     else S.stack.push({ id: parentId, n: '…' });
   }
   S.curDir = parentId;
+  const curDirEl = document.getElementById('cur-dir-id');
+  if (curDirEl) curDirEl.textContent = parentId;
   renderCrumb();
 
   try {
@@ -870,7 +876,7 @@ function renderFiles(fs) {
       '<div class="file-item-icon">' + icon + '</div>' +
       '<div class="file-item-info">' +
         '<div class="file-item-name">' + esc(f.FileName) + '</div>' +
-        '<div class="file-item-meta">' + (isDir ? '文件夹' : fmtSize(f.Size)) + '</div>' +
+        '<div class="file-item-meta">' + (isDir ? ('文件夹 · ID: ' + f.FileId) : fmtSize(f.Size)) + '</div>' +
       '</div>' +
       '<button class="file-item-btn" onclick="event.stopPropagation();pickItem(this)">' + (sel ? '✓ 已选' : '选择') + '</button>' +
     '</div>';
@@ -911,6 +917,10 @@ function clearSelection() {
 
 function goHome() { loadDir('0'); }
 function refreshList() { loadDir(S.curDir); }
+function copyCurDirId() {
+  const id = String(S.curDir || '0');
+  navigator.clipboard.writeText(id).then(() => toast('已复制文件夹ID：' + id, 'success')).catch(() => toast('复制失败', 'error'));
+}
 
 function doSearch(kw) {
   if (!kw.trim()) { renderFiles(S.files); return; }
@@ -1555,19 +1565,72 @@ async function bsfGetChildFolders(parentFileId){
   }
   return folders;
 }
-async function bsfCreateShare(fileId,shareName){
-  const pwd=bsfGenPwd();
-  const bodyWithPwd={shareName,shareExpire:0,fileIDList:String(fileId),sharePwd:pwd};
-  const bodyNoPwd={shareName,shareExpire:0,fileIDList:String(fileId)};
-  async function postCreate(body){
-    const r=await fetch(OFFICIAL_API.base+'/api/v1/share/create',{method:'POST',headers:{'Content-Type':'application/json;charset=UTF-8','Authorization':'Bearer '+S.officialToken,'Origin':OFFICIAL_API.base,'Referer':OFFICIAL_API.base+'/','User-Agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15','platform':'web','app-version':'3'},body:JSON.stringify(body)});
-    let d;try{d=await r.json();}catch(_){throw new Error('创建分享返回非JSON，HTTP '+r.status);}
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    if(d.code!==0&&d.code!=='0'&&d.code!==200)throw new Error(d.message||d.msg||'创建分享失败');
-    const key=bsfShareKey(d);if(!key)throw new Error('未返回shareKey');return {shareKey:key,sharePwd:bsfSharePwd(d,body.sharePwd||'')};
+async function bsfCreateShare(fileId, shareName) {
+  const pwd = bsfGenPwd();
+  const idStr = String(fileId);
+  const idNum = Number(fileId);
+
+  const bodies = [
+    { shareName: shareName, shareExpire: 0, fileIDList: idStr, sharePwd: pwd },
+    { shareName: shareName, shareExpire: 0, fileIdList: idStr, sharePwd: pwd },
+    { ShareName: shareName, ShareExpire: 0, FileIDList: idStr, SharePwd: pwd },
+    { shareName: shareName, shareExpire: 0, fileIDList: idStr },
+    { shareName: shareName, shareExpire: 0, fileIdList: idStr },
+    { ShareName: shareName, ShareExpire: 0, FileIDList: idStr },
+    { shareName: shareName, shareExpire: 0, fileIDList: [idNum], sharePwd: pwd },
+    { shareName: shareName, shareExpire: 0, fileIdList: [idNum], sharePwd: pwd },
+    { shareName: shareName, shareExpire: 0, fileIDList: [idNum] },
+    { shareName: shareName, shareExpire: 0, fileIdList: [idNum] }
+  ];
+
+  let lastErr = '';
+
+  async function parseResult(d, fallbackPwd) {
+    const key = bsfShareKey(d);
+    if (!key) throw new Error('未返回shareKey');
+    return { shareKey: key, sharePwd: bsfSharePwd(d, fallbackPwd || '') };
   }
-  try{return await postCreate(bodyWithPwd);}catch(e){if(String(e.message).includes('pwd')||String(e.message).includes('密码')||String(e.message).includes('参数'))return await postCreate(bodyNoPwd);throw e;}
+
+  // 优先尝试网页端签名接口
+  for (const body of bodies) {
+    try {
+      const d = await apiOfficial('POST', '/b/api/share/create', body);
+      return await parseResult(d, body.sharePwd || body.SharePwd || '');
+    } catch (e) {
+      lastErr = e.message || String(e);
+    }
+  }
+
+  // 再尝试 open-api 风格路径（部分环境可能代理到 www）
+  for (const body of bodies) {
+    try {
+      const r = await fetch(OFFICIAL_API.base + '/api/v1/share/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json;charset=UTF-8',
+          'Authorization': 'Bearer ' + S.officialToken,
+          'Origin': OFFICIAL_API.base,
+          'Referer': OFFICIAL_API.base + '/',
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
+          'platform': 'web',
+          'app-version': '3'
+        },
+        body: JSON.stringify(body)
+      });
+      const text = await r.text();
+      let d;
+      try { d = JSON.parse(text); } catch (_) { throw new Error('创建分享返回非JSON，HTTP ' + r.status); }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (d.code !== 0 && d.code !== '0' && d.code !== 200) throw new Error(d.message || d.msg || '创建分享失败');
+      return await parseResult(d, body.sharePwd || body.SharePwd || '');
+    } catch (e) {
+      lastErr = e.message || String(e);
+    }
+  }
+
+  throw new Error(lastErr || '创建分享失败');
 }
+
 async function bsfStartShare(){
   if(bsfRunning)return;if(!bsfFolders.length){toast('请先列出子文件夹','error');return;}
   bsfRunning=true;bsfResults=[];
