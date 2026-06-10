@@ -279,15 +279,15 @@
 
   <!-- Tab切换 -->
   <div class="tabs">
-    <div class="tab active" data-tab="batchshare" onclick="switchTab('batchshare')">📤 批量分享</div>
-    <div class="tab" data-tab="cloud" onclick="switchTab('cloud')">⚡ 秒传</div>
+    <div class="tab" data-tab="batchshare" onclick="switchTab('batchshare')">📤 批量分享</div>
+    <div class="tab active" data-tab="cloud" onclick="switchTab('cloud')">⚡ 秒传</div>
     <div class="tab" data-tab="save" onclick="switchTab('save')">📥 保存秒传</div>
     <div class="tab" data-tab="batch" onclick="switchTab('batch')">📦 批量生成</div>
     <div class="tab" data-tab="share" onclick="switchTab('share')">🔗 分享解析</div>
   </div>
 
   <!-- ===== 批量分享页 ===== -->
-  <div id="tab-batchshare" class="tab-content active" style="overflow-x:auto;">
+  <div id="tab-batchshare" class="tab-content" style="overflow-x:auto;">
     <div class="card">
       <div class="sec-title">📤 批量分享子文件夹</div>
       <p style="font-size:13px;color:var(--sub);margin-bottom:14px;">
@@ -334,7 +334,7 @@
   </div>
 
   <!-- ===== 网盘文件 ===== -->
-  <div id="tab-cloud" class="tab-content">
+  <div id="tab-cloud" class="tab-content active">
     <div class="card">
       <div class="sec-title">📂 从网盘选择文件</div>
 
@@ -573,6 +573,7 @@ const OFFICIAL_API = { login: 'https://login.123pan.com/api/user/sign_in', base:
   if (S.officialToken) {
     showPage('home');
     document.getElementById('nav-user').textContent = S.officialUser || '用户';
+    setTimeout(() => { if (S.files.length === 0) loadDir('0'); }, 100);
   } else {
     showPage('login');
   }
@@ -623,7 +624,7 @@ function doLoginOfficial() {
       document.getElementById('nav-user').textContent = user;
       document.getElementById('nav-mode-badge').style.display = 'none';
       toast('登录成功！', 'success');
-      setTimeout(() => showPage('home'), 350);
+      setTimeout(() => { showPage('home'); loadDir('0'); }, 350);
     } else { toast(d.message || '登录失败，请检查账号密码', 'error'); }
   }).catch(() => toast('网络异常，请检查网络', 'error')).finally(() => { btn.disabled = false; btnT.textContent = '登录 123云盘'; });
 }
