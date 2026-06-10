@@ -309,6 +309,24 @@
       </div>
 
       <div class="crumb-bar" id="crumb-bar"></div>
+
+      <!-- 批量操作工具栏 -->
+      <div class="card" style="padding:12px;margin-bottom:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+            <input type="checkbox" id="chk-select-all" onchange="toggleSelectAll()"> 全选
+          </label>
+          <span id="sel-count" style="font-size:12px;color:var(--sub);">已选 0 项</span>
+          <div style="flex:1;"></div>
+          <button class="btn btn-outline btn-sm" id="btn-batch-share" onclick="batchShare()" disabled>
+            📤 批量分享
+          </button>
+          <button class="btn btn-purple btn-sm" id="btn-batch-miaochuan" onclick="batchMiaochuan()" disabled>
+            ⚡ 批量秒传
+          </button>
+        </div>
+      </div>
+
       <div class="file-list" id="file-list">
         <div class="loading" id="list-loading">
           <div class="spin dark" style="margin:0 auto 8px;"></div>
@@ -1708,6 +1726,183 @@ function getAuthHeaders() {
     'Platform': 'open_platform',
     'Content-Type': 'application/json'
   };
+}
+
+
+// ============================================================
+// ===== 批量分享 & 批量秒传功能 =====
+// ============================================================
+let bsResults = [];
+
+// 全选/取消全选
+function toggleSelectAll() {
+  const checked = document.getElementById('chk-select-all').checked;
+  document.querySelectorAll('.file-chk').forEach(chk => { chk.checked = checked; });
+  updateSelCount();
+}
+
+// 更新选中计数
+function updateSelCount() {
+  const checked = document.querySelectorAll('.file-chk:checked');
+  document.getElementById('sel-count').textContent = '已选 ' + checked.length + ' 项';
+  const hasSel = checked.length > 0;
+  document.getElementById('btn-batch-share').disabled = !hasSel;
+  document.getElementById('btn-batch-miaochuan').disabled = !hasSel;
+}
+
+// 获取选中的文件
+function getSelectedFiles() {
+  const files = [];
+  document.querySelectorAll('.file-chk:checked').forEach(chk => {
+    files.push({
+      file_id: parseInt(chk.dataset.id),
+      name: chk.dataset.name,
+      type: parseInt(chk.dataset.type),  // 0=文件, 1=文件夹
+      size: parseInt(chk.dataset.size || 0),
+      etag: chk.dataset.etag || ''
+    });
+  });
+  return files;
+}
+
+// 批量分享
+async function batchShare() {
+  const files = getSelectedFiles();
+  if (files.length === 0) { toast('请先选择文件', 'error'); return; }
+
+  bsResults = [];
+  const total = files.length;
+  toast('开始批量分享 ' + total + ' 个项目...', 'info');
+
+  for (let i = 0; i < total; i++) {
+    const f = files[i];
+    try {
+      const shareKey = await bsCreateShare(f.file_id, f.name);
+      bsResults.push({
+        name: f.name,
+        type: f.type === 1 ? '📁' : '📄',
+        share_url: 'https://www.123pan.com/s/' + shareKey,
+        status: '✅'
+      });
+    } catch (e) {
+      bsResults.push({
+        name: f.name,
+        type: f.type === 1 ? '📁' : '📄',
+        share_url: '❌ ' + e.message,
+        status: '❌'
+      });
+    }
+    if (i < total - 1) await new Promise(r => setTimeout(r, 300));
+  }
+
+  // 显示结果
+  showBatchResult('share');
+}
+
+// 批量秒传
+async function batchMiaochuan() {
+  const files = getSelectedFiles();
+  if (files.length === 0) { toast('请先选择文件', 'error'); return; }
+
+  // 只处理文件，不处理文件夹
+  const fileOnly = files.filter(f => f.type !== 1);
+  if (fileOnly.length === 0) { toast('选中的都是文件夹，无法生成秒传', 'error'); return; }
+
+  const lines = fileOnly.map(f => '123FLCPV2$' + f.etag + '#' + f.size + '#' + f.name);
+  const txt = lines.join('\n');
+
+  try {
+    await navigator.clipboard.writeText(txt);
+    toast('已复制 ' + fileOnly.length + ' 个文件的秒传链接！', 'success');
+  } catch (e) {
+    // 降级方案
+    const textarea = document.createElement('textarea');
+    textarea.value = txt;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    toast('已复制 ' + fileOnly.length + ' 个文件的秒传链接！', 'success');
+  }
+}
+
+// 创建分享链接
+async function bsCreateShare(fileId, shareName) {
+  const resp = await fetch(API_BASE + '/api/v1/share/create', {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({
+      shareName: shareName,
+      shareExpire: 0,
+      fileIDList: String(fileId)
+    })
+  });
+  const data = await resp.json();
+  if (data.code !== 0) throw new Error(data.message || '创建分享失败');
+  const shareKey = data.data && data.data.shareKey;
+  if (!shareKey) throw new Error('未返回shareKey');
+  return shareKey;
+}
+
+// 显示批量操作结果
+function showBatchResult(type) {
+  const ok = bsResults.filter(r => r.status === '✅');
+  const fail = bsResults.filter(r => r.status === '❌');
+
+  let html = '<div class="card" style="margin-top:12px;">';
+  html += '<div style="font-size:14px;font-weight:700;margin-bottom:10px;">📋 批量分享结果</div>';
+  html += '<div style="font-size:13px;color:var(--sub);margin-bottom:10px;">成功: ' + ok.length + ' / 失败: ' + fail.length + ' / 总计: ' + bsResults.length + '</div>';
+
+  bsResults.forEach(r => {
+    html += '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">';
+    html += '<span>' + r.type + '</span>';
+    html += '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.name) + '</span>';
+    if (r.status === '✅') {
+      html += '<span style="color:var(--sub);font-size:11px;">' + r.share_url.split('/').pop() + '</span>';
+    }
+    html += '<span>' + r.status + '</span>';
+    html += '</div>';
+  });
+
+  // 复制按钮
+  html += '<div style="margin-top:12px;display:flex;gap:8px;">';
+  html += '<button class="btn btn-primary btn-sm" onclick="copyAllShares()">📋 复制全部链接</button>';
+  html += '<button class="btn btn-purple btn-sm" onclick="exportSharesCSV()">📊 导出CSV</button>';
+  html += '</div>';
+  html += '</div>';
+
+  // 在文件列表下方显示结果
+  const fileList = document.getElementById('file-list');
+  const existing = document.getElementById('batch-result');
+  if (existing) existing.remove();
+
+  const div = document.createElement('div');
+  div.id = 'batch-result';
+  div.innerHTML = html;
+  fileList.parentNode.insertBefore(div, fileList.nextSibling);
+}
+
+// 复制全部分享链接
+function copyAllShares() {
+  const ok = bsResults.filter(r => r.status === '✅');
+  const lines = ok.map(r => r.name + '\n' + r.share_url);
+  const txt = lines.join('\n\n');
+  navigator.clipboard.writeText(txt).then(() => toast('已复制全部链接！', 'success')).catch(() => toast('复制失败', 'error'));
+}
+
+// 导出CSV
+function exportSharesCSV() {
+  const ok = bsResults.filter(r => r.status === '✅');
+  if (ok.length === 0) { toast('没有可导出的数据', 'error'); return; }
+
+  let csv = '\uFEFF名称,分享链接\n';
+  ok.forEach(r => {
+    csv += '"' + r.name.replace(/"/g, '""') + '","' + r.share_url + '"\n';
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  saveAs(blob, '123pan_shares.csv');
+  toast('已导出CSV！', 'success');
 }
 
 </script>
