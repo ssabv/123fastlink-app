@@ -307,6 +307,9 @@
           📤 开始批量分享
         </button>
       </div>
+      <button class="btn btn-purple btn-full mt-10" onclick="bsExportAllSharesCSV()">
+        📊 导出账号全部分享链接CSV
+      </button>
 
       <div class="prog" id="bs-prog" style="display:none;">
         <div class="prog-info">
@@ -1542,72 +1545,11 @@ function saveAs(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// ===== 批量分享功能 =====
+// ===== 批量分享功能（稳定版，合并去重） =====
 let bsFolders = [];
 let bsResults = [];
 let bsRunning = false;
 
-// 列出子文件夹
-async function bsListFolders() {
-  const parentId = document.getElementById('inp-bs-parent').value.trim();
-  if (!parentId) { toast('请输入父文件夹ID', 'error'); return; }
-
-  const fileList = document.getElementById('bs-folder-list');
-  fileList.innerHTML = '<div class="loading">加载中...</div>';
-
-  try {
-    const folders = await bsGetChildFolders(parseInt(parentId));
-    bsFolders = folders;
-
-    if (folders.length === 0) {
-      fileList.innerHTML = '<div style="color:var(--sub);font-size:13px;text-align:center;padding:20px;">未找到子文件夹</div>';
-      document.getElementById('btn-bs-share').disabled = true;
-      return;
-    }
-
-    let html = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">找到 ' + folders.length + ' 个子文件夹：</div>';
-    folders.forEach((f, i) => {
-      html += '<div class="file-item"><span class="file-icon">📁</span><span class="file-name">' + esc(f.name) + '</span></div>';
-    });
-    fileList.innerHTML = html;
-    document.getElementById('btn-bs-share').disabled = false;
-    toast('找到 ' + folders.length + ' 个子文件夹', 'success');
-  } catch (e) {
-    fileList.innerHTML = '<div style="color:var(--danger);font-size:13px;">❌ ' + esc(e.message) + '</div>';
-    document.getElementById('btn-bs-share').disabled = true;
-  }
-}
-
-// 获取子文件夹列表
-async function bsGetChildFolders(parentFileId) {
-  const folders = [];
-  let lastFileId = null;
-
-  while (true) {
-    let url = window.OFFICIAL_API.base + '/api/v2/file/list?parentFileId=' + parentFileId + '&limit=100';
-    if (lastFileId !== null) url += '&lastFileId=' + lastFileId;
-
-    const resp = await fetch(url, { headers: getAuthHeaders() });
-    const data = await resp.json();
-
-    if (data.code !== 0) throw new Error(data.message || '获取文件列表失败');
-
-    const fileList = (data.data && data.data.fileList) || [];
-    for (const item of fileList) {
-      if (item.type === 1 && !item.trashed) {
-        folders.push({ file_id: item.fileId, name: item.filename || String(item.fileId) });
-      }
-    }
-
-    const nextId = data.data ? data.data.lastFileId : -1;
-    if (nextId === -1) break;
-    lastFileId = nextId;
-  }
-
-  return folders;
-}
-
-// 生成4位随机密码
 function bsGenPwd() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let pwd = '';
@@ -1615,392 +1557,136 @@ function bsGenPwd() {
   return pwd;
 }
 
-// 开始批量分享
-async function bsStartShare() {
-  if (bsRunning) return;
-  if (bsFolders.length === 0) { toast('请先列出子文件夹', 'error'); return; }
-
-  bsRunning = true;
-  bsResults = [];
-  const prog = document.getElementById('bs-prog');
-  const statusEl = document.getElementById('bs-status');
-  const pctEl = document.getElementById('bs-pct');
-  const fillEl = document.getElementById('bs-fill');
-  const resultCard = document.getElementById('bs-result-card');
-  const resultList = document.getElementById('bs-result-list');
-
-  prog.style.display = 'block';
-  resultCard.style.display = 'none';
-  document.getElementById('btn-bs-share').disabled = true;
-  document.getElementById('btn-bs-list').disabled = true;
-
-  const total = bsFolders.length;
-
-  for (let i = 0; i < total; i++) {
-    const folder = bsFolders[i];
-    statusEl.textContent = '正在分享: ' + folder.name + ' (' + (i + 1) + '/' + total + ')';
-    const pct = Math.round(((i + 1) / total) * 100);
-    pctEl.textContent = pct + '%';
-    fillEl.style.width = pct + '%';
-
-    try {
-      const shareKey = await bsCreateShare(folder.file_id, folder.name);
-      bsResults.push({
-        name: folder.name,
-        file_id: folder.file_id,
-        share_key: shareKey,
-        share_url: 'https://www.123pan.com/s/' + shareKey,
-        pwd: ''
-      });
-    } catch (e) {
-      bsResults.push({
-        name: folder.name,
-        file_id: folder.file_id,
-        share_key: '',
-        share_url: '❌ 失败: ' + e.message,
-        pwd: ''
-      });
-    }
-
-    // 延迟避免频率限制
-    if (i < total - 1) await new Promise(r => setTimeout(r, 300));
-  }
-
-  // 显示结果
-  let html = '';
-  bsResults.forEach((r, i) => {
-    const isOk = r.share_key !== '';
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">';
-    html += '<span style="font-size:18px;">' + (isOk ? '✅' : '❌') + '</span>';
-    html += '<span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(r.name) + '</span>';
-    if (isOk) {
-      html += '<span style="color:var(--sub);font-size:11px;">密码: ' + (r.pwd || '无') + '</span>';
-      html += '<button class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:11px;" onclick="bsCopyOne(' + i + ')">复制</button>';
-    }
-    html += '</div>';
-  });
-  resultList.innerHTML = html;
-  resultCard.style.display = 'block';
-
-  statusEl.textContent = '✅ 完成！成功: ' + bsResults.filter(r => r.share_key).length + '/' + total;
-  bsRunning = false;
-  document.getElementById('btn-bs-share').disabled = false;
-  document.getElementById('btn-bs-list').disabled = false;
-
-  toast('批量分享完成！', 'success');
+function getShareKeyFromData(data) {
+  const d = data && data.data ? data.data : {};
+  return d.shareKey || d.ShareKey || d.share_key || d.key || '';
 }
 
-// 创建分享链接
-async function bsCreateShare(fileId, shareName) {
-  const body = {
-    shareName: shareName,
-    shareExpire: 0,  // 永久有效
-    fileIDList: String(fileId)
-  };
-
-  const resp = await fetch(window.OFFICIAL_API.base + '/api/v1/share/create', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(body)
-  });
-
-  const data = await resp.json();
-  if (data.code !== 0) throw new Error(data.message || '创建分享失败');
-
-  const shareKey = data.data && data.data.shareKey;
-  if (!shareKey) throw new Error('未返回shareKey');
-
-  return shareKey;
+function getSharePwdFromData(data, fallbackPwd) {
+  const d = data && data.data ? data.data : {};
+  return d.sharePwd || d.SharePwd || d.share_pwd || fallbackPwd || '';
 }
 
-// 复制单个链接
-function bsCopyOne(index) {
-  const r = bsResults[index];
-  if (!r || !r.share_key) return;
-  const txt = r.name + '\n' + r.share_url + (r.pwd ? '\n密码: ' + r.pwd : '');
-  navigator.clipboard.writeText(txt).then(() => toast('已复制！', 'success')).catch(() => toast('复制失败', 'error'));
+function buildShareUrl(shareKey) {
+  if (!shareKey) return '';
+  if (/^https?:\/\//i.test(shareKey)) return shareKey;
+  return 'https://www.123pan.com/s/' + shareKey;
 }
 
-// 复制全部链接
-function bsCopyAll() {
-  const lines = bsResults.filter(r => r.share_key).map(r => r.name + '\n' + r.share_url + (r.pwd ? '\n密码: ' + r.pwd : ''));
-  const txt = lines.join('\n\n');
-  if (!txt) { toast('没有可复制的内容', 'error'); return; }
-  navigator.clipboard.writeText(txt).then(() => toast('已复制全部链接！', 'success')).catch(() => toast('复制失败', 'error'));
-}
-
-// 导出 Excel (CSV格式)
-function bsExportExcel() {
-  const ok = bsResults.filter(r => r.share_key);
-  if (ok.length === 0) { toast('没有可导出的数据', 'error'); return; }
-
-  let csv = '\uFEFF文件夹名称,分享链接,密码\n';
-  ok.forEach(r => {
-    csv += '"' + r.name.replace(/"/g, '""') + '","' + r.share_url + '","' + (r.pwd || '') + '"\n';
-  });
-
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  saveAs(blob, '123pan_share_links.csv');
-  toast('已导出 CSV 文件！', 'success');
-}
-
-// 获取认证头
-function getAuthHeaders() {
-  const token = S.officialToken || localStorage.getItem('123pan_token') || '';
+function officialHeaders() {
+  if (!S.officialToken) throw new Error('请先登录123云盘账号');
   return {
-    'Authorization': 'Bearer ' + token,
-    'Platform': 'open_platform',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json;charset=UTF-8',
+    'Authorization': 'Bearer ' + S.officialToken,
+    'Origin': OFFICIAL_API.base,
+    'Referer': OFFICIAL_API.base + '/',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
+    'platform': 'web',
+    'app-version': '3'
   };
 }
 
-
-// ===== 批量分享 & 批量秒传功能 =====
-let bsResults = [];
-
-// 全选/取消全选
-function toggleSelectAll() {
-  const checked = document.getElementById('chk-select-all').checked;
-  document.querySelectorAll('.file-chk').forEach(chk => { chk.checked = checked; });
-  updateSelCount();
-}
-
-// 更新选中计数
-function updateSelCount() {
-  const checked = document.querySelectorAll('.file-chk:checked');
-  document.getElementById('sel-count').textContent = '已选 ' + checked.length + ' 项';
-  const hasSel = checked.length > 0;
-  document.getElementById('btn-batch-share').disabled = !hasSel;
-  document.getElementById('btn-batch-miaochuan').disabled = !hasSel;
-}
-
-// 获取选中的文件
-function getSelectedFiles() {
-  const files = [];
-  document.querySelectorAll('.file-chk:checked').forEach(chk => {
-    files.push({
-      file_id: parseInt(chk.dataset.id),
-      name: chk.dataset.name,
-      type: parseInt(chk.dataset.type),  // 0=文件, 1=文件夹
-      size: parseInt(chk.dataset.size || 0),
-      etag: chk.dataset.etag || ''
-    });
-  });
-  return files;
-}
-
-// 批量分享
-async function batchShare() {
-  const files = getSelectedFiles();
-  if (files.length === 0) { toast('请先选择文件', 'error'); return; }
-
-  bsResults = [];
-  const total = files.length;
-  toast('开始批量分享 ' + total + ' 个项目...', 'info');
-
-  for (let i = 0; i < total; i++) {
-    const f = files[i];
-    try {
-      const shareKey = await bsCreateShare(f.file_id, f.name);
-      bsResults.push({
-        name: f.name,
-        type: f.type === 1 ? '📁' : '📄',
-        share_url: 'https://www.123pan.com/s/' + shareKey,
-        status: '✅'
-      });
-    } catch (e) {
-      bsResults.push({
-        name: f.name,
-        type: f.type === 1 ? '📁' : '📄',
-        share_url: '❌ ' + e.message,
-        status: '❌'
-      });
-    }
-    if (i < total - 1) await new Promise(r => setTimeout(r, 300));
-  }
-
-  // 显示结果
-  showBatchResult('share');
-}
-
-// 批量秒传
-async function batchMiaochuan() {
-  const files = getSelectedFiles();
-  if (files.length === 0) { toast('请先选择文件', 'error'); return; }
-
-  // 只处理文件，不处理文件夹
-  const fileOnly = files.filter(f => f.type !== 1);
-  if (fileOnly.length === 0) { toast('选中的都是文件夹，无法生成秒传', 'error'); return; }
-
-  const lines = fileOnly.map(f => '123FLCPV2$' + f.etag + '#' + f.size + '#' + f.name);
-  const txt = lines.join('\n');
-
-  try {
-    await navigator.clipboard.writeText(txt);
-    toast('已复制 ' + fileOnly.length + ' 个文件的秒传链接！', 'success');
-  } catch (e) {
-    // 降级方案
-    const textarea = document.createElement('textarea');
-    textarea.value = txt;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
-    toast('已复制 ' + fileOnly.length + ' 个文件的秒传链接！', 'success');
-  }
-}
-
-// 创建分享链接
-async function bsCreateShare(fileId, shareName) {
-  const resp = await fetch(OFFICIAL_API.base + '/api/v1/share/create', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({
-      shareName: shareName,
-      shareExpire: 0,
-      fileIDList: String(fileId)
-    })
-  });
-  const data = await resp.json();
-  if (data.code !== 0) throw new Error(data.message || '创建分享失败');
-  const shareKey = data.data && data.data.shareKey;
-  if (!shareKey) throw new Error('未返回shareKey');
-  return shareKey;
-}
-
-// 显示批量操作结果
-function showBatchResult(type) {
-  const ok = bsResults.filter(r => r.status === '✅');
-  const fail = bsResults.filter(r => r.status === '❌');
-
-  let html = '<div class="card" style="margin-top:12px;">';
-  html += '<div style="font-size:14px;font-weight:700;margin-bottom:10px;">📋 批量分享结果</div>';
-  html += '<div style="font-size:13px;color:var(--sub);margin-bottom:10px;">成功: ' + ok.length + ' / 失败: ' + fail.length + ' / 总计: ' + bsResults.length + '</div>';
-
-  bsResults.forEach(r => {
-    html += '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">';
-    html += '<span>' + r.type + '</span>';
-    html += '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.name) + '</span>';
-    if (r.status === '✅') {
-      html += '<span style="color:var(--sub);font-size:11px;">' + r.share_url.split('/').pop() + '</span>';
-    }
-    html += '<span>' + r.status + '</span>';
-    html += '</div>';
-  });
-
-  // 复制按钮
-  html += '<div style="margin-top:12px;display:flex;gap:8px;">';
-  html += '<button class="btn btn-primary btn-sm" onclick="copyAllShares()">📋 复制全部链接</button>';
-  html += '<button class="btn btn-purple btn-sm" onclick="exportSharesCSV()">📊 导出CSV</button>';
-  html += '</div>';
-  html += '</div>';
-
-  // 在文件列表下方显示结果
-  const fileList = document.getElementById('file-list');
-  const existing = document.getElementById('batch-result');
-  if (existing) existing.remove();
-
-  const div = document.createElement('div');
-  div.id = 'batch-result';
-  div.innerHTML = html;
-  fileList.parentNode.insertBefore(div, fileList.nextSibling);
-}
-
-// 复制全部分享链接
-function copyAllShares() {
-  const ok = bsResults.filter(r => r.status === '✅');
-  const lines = ok.map(r => r.name + '\n' + r.share_url);
-  const txt = lines.join('\n\n');
-  navigator.clipboard.writeText(txt).then(() => toast('已复制全部链接！', 'success')).catch(() => toast('复制失败', 'error'));
-}
-
-// 导出CSV
-function exportSharesCSV() {
-  const ok = bsResults.filter(r => r.status === '✅');
-  if (ok.length === 0) { toast('没有可导出的数据', 'error'); return; }
-
-  let csv = '\uFEFF名称,分享链接\n';
-  ok.forEach(r => {
-    csv += '"' + r.name.replace(/"/g, '""') + '","' + r.share_url + '"\n';
-  });
-
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  saveAs(blob, '123pan_shares.csv');
-  toast('已导出CSV！', 'success');
-}
-
-
-// ============================================================
-// ===== 批量分享功能 =====
-// ============================================================
-let bsFolders = [];
-let bsResults = [];
-
+// 列出指定父目录下的一级子文件夹
 async function bsListFolders() {
-  const parentId = document.getElementById('inp-bs-parent').value.trim();
-  if (!parentId) { toast('请输入父文件夹ID', 'error'); return; }
+  const parentIdText = document.getElementById('inp-bs-parent').value.trim();
+  if (!parentIdText) { toast('请输入父文件夹ID', 'error'); return; }
+  if (!S.officialToken) { toast('请先登录123云盘账号', 'error'); return; }
+
+  const parentId = parseInt(parentIdText, 10);
+  if (Number.isNaN(parentId)) { toast('父文件夹ID必须是数字', 'error'); return; }
 
   const fileList = document.getElementById('bs-folder-list');
-  fileList.innerHTML = '<div class="loading">加载中...</div>';
+  fileList.innerHTML = '<div class="loading"><div class="spin dark" style="margin:0 auto 8px;"></div>加载中...</div>';
+  document.getElementById('btn-bs-share').disabled = true;
 
   try {
-    const folders = await bsGetChildFolders(parseInt(parentId));
-    bsFolders = folders;
-
-    if (folders.length === 0) {
-      fileList.innerHTML = '<div style="color:var(--sub);font-size:13px;text-align:center;padding:20px;">未找到子文件夹</div>';
-      document.getElementById('btn-bs-share').disabled = true;
+    bsFolders = await bsGetChildFolders(parentId);
+    if (bsFolders.length === 0) {
+      fileList.innerHTML = '<div style="color:var(--sub);font-size:13px;text-align:center;padding:20px;">未找到一级子文件夹</div>';
       return;
     }
 
-    let html = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">找到 ' + folders.length + ' 个子文件夹：</div>';
-    folders.forEach((f, i) => {
-      html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">';
-      html += '<span style="font-size:18px;">📁</span>';
-      html += '<span style="flex:1;">' + esc(f.name) + '</span>';
-      html += '</div>';
-    });
+    let html = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">找到 ' + bsFolders.length + ' 个一级子文件夹：</div>';
+    html += bsFolders.map(f =>
+      '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
+        '<span style="font-size:18px;">📁</span>' +
+        '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+        '<span style="color:var(--sub);font-size:11px;">ID ' + f.file_id + '</span>' +
+      '</div>'
+    ).join('');
     fileList.innerHTML = html;
     document.getElementById('btn-bs-share').disabled = false;
-    toast('找到 ' + folders.length + ' 个子文件夹', 'success');
+    toast('找到 ' + bsFolders.length + ' 个子文件夹', 'success');
   } catch (e) {
     fileList.innerHTML = '<div style="color:var(--danger);font-size:13px;">❌ ' + esc(e.message) + '</div>';
-    document.getElementById('btn-bs-share').disabled = true;
+    toast('列出失败：' + e.message, 'error');
   }
 }
 
 async function bsGetChildFolders(parentFileId) {
   const folders = [];
   let lastFileId = null;
-
   while (true) {
-    let url = OFFICIAL_API.base + '/api/v2/file/list?parentFileId=' + parentFileId + '&limit=100';
-    if (lastFileId !== null) url += '&lastFileId=' + lastFileId;
-
-    const resp = await fetch(url, { headers: getHeaders() });
-    const data = await resp.json();
-
-    if (data.code !== 0) throw new Error(data.message || '获取文件列表失败');
-
-    const fileList = (data.data && data.data.fileList) || [];
+    const params = { parentFileId: String(parentFileId), limit: '100' };
+    if (lastFileId !== null) params.lastFileId = String(lastFileId);
+    const d = await apiOfficial('GET', '/api/v2/file/list', null, params);
+    const fileList = (d.data && d.data.fileList) || [];
     for (const item of fileList) {
-      if (item.type === 1 && !item.trashed) {
-        folders.push({ file_id: item.fileId, name: item.filename || String(item.fileId) });
+      const type = item.type ?? item.Type;
+      const trashed = item.trashed ?? item.Trashed ?? 0;
+      if (Number(type) === 1 && Number(trashed) === 0) {
+        folders.push({
+          file_id: item.fileId ?? item.FileId ?? item.fileID ?? item.FileID,
+          name: item.filename || item.FileName || item.name || String(item.fileId || item.FileId)
+        });
       }
     }
-
-    const nextId = data.data ? data.data.lastFileId : -1;
-    if (nextId === -1) break;
+    const nextId = d.data ? (d.data.lastFileId ?? d.data.LastFileId ?? -1) : -1;
+    if (Number(nextId) === -1) break;
     lastFileId = nextId;
   }
-
   return folders;
 }
 
-async function bsStartShare() {
-  if (bsFolders.length === 0) { toast('请先列出子文件夹', 'error'); return; }
+// 单个创建分享，默认生成4位随机提取码；若接口不接受密码则自动退化为无密码
+async function bsCreateShare(fileId, shareName) {
+  const pwd = bsGenPwd();
+  const bodyWithPwd = { shareName, shareExpire: 0, fileIDList: String(fileId), sharePwd: pwd };
+  const bodyNoPwd = { shareName, shareExpire: 0, fileIDList: String(fileId) };
 
+  async function postCreate(body) {
+    const resp = await fetch(OFFICIAL_API.base + '/api/v1/share/create', {
+      method: 'POST',
+      headers: officialHeaders(),
+      body: JSON.stringify(body)
+    });
+    let data;
+    try { data = await resp.json(); } catch (_) { throw new Error('创建分享返回非JSON，HTTP ' + resp.status); }
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    if (data.code !== 0 && data.code !== '0' && data.code !== 200) throw new Error(data.message || data.msg || '创建分享失败');
+    const shareKey = getShareKeyFromData(data);
+    if (!shareKey) throw new Error('未返回shareKey');
+    return { shareKey, sharePwd: getSharePwdFromData(data, body.sharePwd || '') };
+  }
+
+  try {
+    return await postCreate(bodyWithPwd);
+  } catch (e) {
+    // 兼容部分网页接口不支持 sharePwd 的情况
+    if (String(e.message).includes('pwd') || String(e.message).includes('密码') || String(e.message).includes('参数')) {
+      return await postCreate(bodyNoPwd);
+    }
+    throw e;
+  }
+}
+
+// 开始批量分享父目录下的一级子文件夹
+async function bsStartShare() {
+  if (bsRunning) return;
+  if (!bsFolders.length) { toast('请先列出子文件夹', 'error'); return; }
+  bsRunning = true;
   bsResults = [];
+
   const prog = document.getElementById('bs-prog');
   const statusEl = document.getElementById('bs-status');
   const pctEl = document.getElementById('bs-pct');
@@ -2014,11 +1700,10 @@ async function bsStartShare() {
   document.getElementById('btn-bs-list').disabled = true;
 
   const total = bsFolders.length;
-
   for (let i = 0; i < total; i++) {
     const folder = bsFolders[i];
-    statusEl.textContent = '正在分享: ' + folder.name + ' (' + (i + 1) + '/' + total + ')';
     const pct = Math.round(((i + 1) / total) * 100);
+    statusEl.textContent = '正在分享: ' + folder.name + ' (' + (i + 1) + '/' + total + ')';
     pctEl.textContent = pct + '%';
     fillEl.style.width = pct + '%';
 
@@ -2026,92 +1711,156 @@ async function bsStartShare() {
       const result = await bsCreateShare(folder.file_id, folder.name);
       bsResults.push({
         name: folder.name,
-        share_url: 'https://www.123pan.com/s/' + result.shareKey,
+        file_id: folder.file_id,
+        share_key: result.shareKey,
+        share_url: buildShareUrl(result.shareKey),
         pwd: result.sharePwd || '',
         status: '✅'
       });
     } catch (e) {
       bsResults.push({
         name: folder.name,
+        file_id: folder.file_id,
+        share_key: '',
         share_url: '',
         pwd: '',
-        status: '❌ ' + e.message
+        status: '❌',
+        error: e.message
       });
     }
-
     if (i < total - 1) await new Promise(r => setTimeout(r, 300));
   }
 
-  // 显示结果
-  const okCount = bsResults.filter(r => r.share_url).length;
-  document.getElementById('bs-result-count').textContent = '(成功 ' + okCount + ' / ' + total + ')';
+  bsRenderResults();
+  const okCount = bsResults.filter(r => r.share_key).length;
+  statusEl.textContent = '✅ 完成！成功: ' + okCount + '/' + total;
+  bsRunning = false;
+  document.getElementById('btn-bs-share').disabled = false;
+  document.getElementById('btn-bs-list').disabled = false;
+  toast('批量分享完成！成功 ' + okCount + '/' + total, okCount ? 'success' : 'warn');
+}
+
+function bsRenderResults() {
+  const resultCard = document.getElementById('bs-result-card');
+  const resultList = document.getElementById('bs-result-list');
+  const okCount = bsResults.filter(r => r.share_key).length;
+  document.getElementById('bs-result-count').textContent = '(成功 ' + okCount + ' / 总计 ' + bsResults.length + ')';
 
   let html = '';
   bsResults.forEach((r, i) => {
-    const isOk = !!r.share_url;
+    const isOk = !!r.share_key;
     html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">';
     html += '<span style="font-size:16px;">' + (isOk ? '✅' : '❌') + '</span>';
-    html += '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.name) + '</span>';
+    html += '<span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + esc(r.name) + '">' + esc(r.name) + '</span>';
     if (isOk) {
       html += '<span style="color:var(--sub);font-size:11px;flex-shrink:0;">密码: ' + (r.pwd || '无') + '</span>';
-      html += '<button class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:11px;flex-shrink:0;" onclick="bsCopyOne(' + i + ')">📋 复制</button>';
+      html += '<button class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:11px;flex-shrink:0;" onclick="bsCopyOne(' + i + ')">复制</button>';
+    } else {
+      html += '<span style="color:var(--danger);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(r.error || '') + '">' + esc(r.error || '失败') + '</span>';
     }
     html += '</div>';
   });
   resultList.innerHTML = html;
   resultCard.style.display = 'block';
-
-  statusEl.textContent = '✅ 完成！成功: ' + okCount + '/' + total;
-  document.getElementById('btn-bs-share').disabled = false;
-  document.getElementById('btn-bs-list').disabled = false;
-
-  toast('批量分享完成！成功 ' + okCount + '/' + total, 'success');
-}
-
-async function bsCreateShare(fileId, shareName) {
-  const resp = await fetch(OFFICIAL_API.base + '/api/v1/share/create', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({
-      shareName: shareName,
-      shareExpire: 0,
-      fileIDList: String(fileId)
-    })
-  });
-  const data = await resp.json();
-  if (data.code !== 0) throw new Error(data.message || '创建分享失败');
-  const result = data.data;
-  if (!result || !result.shareKey) throw new Error('未返回shareKey');
-  return result;
 }
 
 function bsCopyOne(index) {
   const r = bsResults[index];
-  if (!r || !r.share_url) return;
-  const txt = r.share_url + (r.pwd ? '\n提取码: ' + r.pwd : '');
+  if (!r || !r.share_key) return;
+  const txt = r.name + '\n' + r.share_url + (r.pwd ? '\n提取码: ' + r.pwd : '');
   navigator.clipboard.writeText(txt).then(() => toast('已复制！', 'success')).catch(() => toast('复制失败', 'error'));
 }
 
 function bsCopyAll() {
-  const ok = bsResults.filter(r => r.share_url);
-  const lines = ok.map(r => r.name + '\n' + r.share_url + (r.pwd ? '\n提取码: ' + r.pwd : ''));
-  const txt = lines.join('\n\n');
+  const ok = bsResults.filter(r => r.share_key);
+  const txt = ok.map(r => r.name + '\n' + r.share_url + (r.pwd ? '\n提取码: ' + r.pwd : '')).join('\n\n');
   if (!txt) { toast('没有可复制的内容', 'error'); return; }
   navigator.clipboard.writeText(txt).then(() => toast('已复制全部链接+密码！', 'success')).catch(() => toast('复制失败', 'error'));
 }
 
 function bsExportCSV() {
-  const ok = bsResults.filter(r => r.share_url);
-  if (ok.length === 0) { toast('没有可导出的数据', 'error'); return; }
-
-  let csv = '\uFEFF名称,分享链接,提取码\n';
-  ok.forEach(r => {
-    csv += '"' + r.name.replace(/"/g, '""') + '","' + r.share_url + '","' + (r.pwd || '') + '"\n';
-  });
-
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  saveAs(blob, '123pan_shares.csv');
+  const ok = bsResults.filter(r => r.share_key);
+  if (!ok.length) { toast('没有可导出的数据', 'error'); return; }
+  let csv = '\uFEFF文件夹名称,分享链接,提取码\n';
+  ok.forEach(r => { csv += '"' + r.name.replace(/"/g, '""') + '","' + r.share_url + '","' + (r.pwd || '') + '"\n'; });
+  saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8' }), '123pan_batch_folder_shares.csv');
   toast('已导出CSV！', 'success');
+}
+
+// 批量分享当前勾选的文件/文件夹（保留原页面按钮能力）
+async function batchShare() {
+  const files = getSelectedFiles();
+  if (!files.length) { toast('请先选择文件', 'error'); return; }
+  bsResults = [];
+  toast('开始批量分享 ' + files.length + ' 个项目...', 'info');
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    try {
+      const result = await bsCreateShare(f.file_id, f.name);
+      bsResults.push({ name: f.name, file_id: f.file_id, share_key: result.shareKey, share_url: buildShareUrl(result.shareKey), pwd: result.sharePwd || '', status: '✅' });
+    } catch (e) {
+      bsResults.push({ name: f.name, file_id: f.file_id, share_key: '', share_url: '', pwd: '', status: '❌', error: e.message });
+    }
+    if (i < files.length - 1) await new Promise(r => setTimeout(r, 300));
+  }
+  showBatchResult('share');
+}
+
+// 兼容旧的结果展示函数
+function showBatchResult(type) {
+  const ok = bsResults.filter(r => r.share_key);
+  const fail = bsResults.filter(r => !r.share_key);
+  let html = '<div class="card" style="margin-top:12px;" id="batch-result">';
+  html += '<div style="font-size:14px;font-weight:700;margin-bottom:10px;">📋 批量分享结果</div>';
+  html += '<div style="font-size:13px;color:var(--sub);margin-bottom:10px;">成功: ' + ok.length + ' / 失败: ' + fail.length + ' / 总计: ' + bsResults.length + '</div>';
+  bsResults.forEach((r, i) => {
+    html += '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">';
+    html += '<span>' + (r.share_key ? '✅' : '❌') + '</span>';
+    html += '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.name) + '</span>';
+    if (r.share_key) html += '<button class="btn btn-outline btn-sm" onclick="bsCopyOne(' + i + ')">复制</button>';
+    else html += '<span style="color:var(--danger);font-size:11px;">' + esc(r.error || '失败') + '</span>';
+    html += '</div>';
+  });
+  html += '<div style="margin-top:12px;display:flex;gap:8px;"><button class="btn btn-primary btn-sm" onclick="bsCopyAll()">📋 复制全部链接</button><button class="btn btn-purple btn-sm" onclick="bsExportCSV()">📊 导出CSV</button></div></div>';
+  const fileList = document.getElementById('file-list');
+  const existing = document.getElementById('batch-result');
+  if (existing) existing.remove();
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  fileList.parentNode.insertBefore(div.firstChild, fileList.nextSibling);
+}
+
+// 导出账号全部分享链接（open-api脚本里的 list_all_shares 前端版，尽量兼容）
+async function bsExportAllSharesCSV() {
+  if (!S.officialToken) { toast('请先登录123云盘账号', 'error'); return; }
+  toast('正在获取全部分享列表...', 'info');
+  try {
+    const rows = [];
+    let lastShareId = 0;
+    let guard = 0;
+    while (true) {
+      const d = await apiOfficial('GET', '/api/v1/share/list', null, { limit: '100', lastShareId: String(lastShareId) });
+      const list = (d.data && (d.data.shareList || d.data.ShareList)) || [];
+      for (const s of list) {
+        const key = s.shareKey || s.ShareKey || '';
+        if (!key) continue;
+        const pwd = s.sharePwd || s.SharePwd || '';
+        const name = s.shareName || s.ShareName || s.shareId || s.ShareId || '';
+        rows.push({ name, url: buildShareUrl(key), pwd });
+      }
+      const nextId = d.data ? (d.data.lastShareId ?? d.data.LastShareId ?? -1) : -1;
+      if (Number(nextId) === -1) break;
+      lastShareId = nextId;
+      guard++; if (guard > 200) break;
+    }
+    if (!rows.length) { toast('没有分享记录或接口不支持', 'warn'); return; }
+    let csv = '\uFEFF名称,分享链接,提取码\n';
+    rows.forEach(r => { csv += '"' + String(r.name).replace(/"/g, '""') + '","' + r.url + '","' + (r.pwd || '') + '"\n'; });
+    saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8' }), '123pan_all_shares.csv');
+    toast('已导出全部分享：' + rows.length + ' 条', 'success');
+  } catch (e) {
+    toast('导出全部分享失败：' + e.message, 'error');
+  }
 }
 
 // ============================================================
