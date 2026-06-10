@@ -1565,7 +1565,7 @@ async function bsGetChildFolders(parentFileId) {
   let lastFileId = null;
 
   while (true) {
-    let url = window.API_BASE + '/api/v2/file/list?parentFileId=' + parentFileId + '&limit=100';
+    let url = window.OFFICIAL_API.base + '/api/v2/file/list?parentFileId=' + parentFileId + '&limit=100';
     if (lastFileId !== null) url += '&lastFileId=' + lastFileId;
 
     const resp = await fetch(url, { headers: getAuthHeaders() });
@@ -1679,7 +1679,7 @@ async function bsCreateShare(fileId, shareName) {
     fileIDList: String(fileId)
   };
 
-  const resp = await fetch(window.API_BASE + '/api/v1/share/create', {
+  const resp = await fetch(window.OFFICIAL_API.base + '/api/v1/share/create', {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(body)
@@ -1727,7 +1727,7 @@ function bsExportExcel() {
 
 // 获取认证头
 function getAuthHeaders() {
-  const token = localStorage.getItem('123pan_token') || '';
+  const token = S.officialToken || localStorage.getItem('123pan_token') || '';
   return {
     'Authorization': 'Bearer ' + token,
     'Platform': 'open_platform',
@@ -1833,7 +1833,7 @@ async function batchMiaochuan() {
 
 // 创建分享链接
 async function bsCreateShare(fileId, shareName) {
-  const resp = await fetch(API_BASE + '/api/v1/share/create', {
+  const resp = await fetch(OFFICIAL_API.base + '/api/v1/share/create', {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
@@ -1955,7 +1955,7 @@ async function bsGetChildFolders(parentFileId) {
   let lastFileId = null;
 
   while (true) {
-    let url = API_BASE + '/api/v2/file/list?parentFileId=' + parentFileId + '&limit=100';
+    let url = OFFICIAL_API.base + '/api/v2/file/list?parentFileId=' + parentFileId + '&limit=100';
     if (lastFileId !== null) url += '&lastFileId=' + lastFileId;
 
     const resp = await fetch(url, { headers: getHeaders() });
@@ -2050,7 +2050,7 @@ async function bsStartShare() {
 }
 
 async function bsCreateShare(fileId, shareName) {
-  const resp = await fetch(API_BASE + '/api/v1/share/create', {
+  const resp = await fetch(OFFICIAL_API.base + '/api/v1/share/create', {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
