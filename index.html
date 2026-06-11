@@ -504,13 +504,28 @@
 
 <script>
 // ============================================================
+
+function genLoginUuid() {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function getLoginUuid() {
+  let v = localStorage.getItem('loginuuid') || localStorage.getItem('loginUuid') || '';
+  if (!v) {
+    v = genLoginUuid();
+    localStorage.setItem('loginuuid', v);
+  }
+  return v;
+}
+
 // ===== 全局状态 =====
 // ============================================================
 const S = {
   officialToken: localStorage.getItem('t') || '',
   officialUser: localStorage.getItem('u') || '',
   officialPwd: localStorage.getItem('p') || '',
-  loginUuid: localStorage.getItem('loginuuid') || localStorage.getItem('loginUuid') || '',
+  loginUuid: getLoginUuid(),
 
   files: [],
   curDir: '0',
@@ -584,7 +599,7 @@ function doLoginOfficial() {
 
   fetch(OFFICIAL_API.login, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json;charset=UTF-8', 'Origin': OFFICIAL_API.base, 'Referer': OFFICIAL_API.base + '/', 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15', 'platform': 'web', 'app-version': '3' },
+    headers: { 'Content-Type': 'application/json;charset=UTF-8', 'Origin': OFFICIAL_API.base, 'Referer': OFFICIAL_API.base + '/', 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15', 'platform': 'web', 'app-version': '3', 'loginuuid': S.loginUuid },
     body: JSON.stringify(user.includes('@') ? { mail: user, password: pwd, type: 2 } : { passport: user, password: pwd, remember: rem })
   }).then(r => r.json()).then(d => {
     if (d.code === 200 && d.data?.token) {
@@ -824,7 +839,7 @@ async function apiOfficial(method, path, body, params) {
   if (params) { const qs = new URLSearchParams(params).toString(); url = path + '?' + qs + '&' + signP(path); }
   const r = await fetch(OFFICIAL_API.base + url, {
     method,
-    headers: { 'Content-Type': 'application/json;charset=UTF-8', 'Authorization': 'Bearer ' + S.officialToken, ...(S.loginUuid ? {'loginuuid': S.loginUuid} : {}), 'Origin': OFFICIAL_API.base, 'Referer': OFFICIAL_API.base + '/', 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15', 'platform': 'web', 'app-version': '3' },
+    headers: { 'Content-Type': 'application/json;charset=UTF-8', 'Authorization': 'Bearer ' + S.officialToken, ...(S.loginUuid ? {'loginuuid': S.loginUuid} : {}), 'Origin': OFFICIAL_API.base, 'Referer': OFFICIAL_API.base + '/', 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15', 'platform': 'web', 'app-version': '3', 'loginuuid': S.loginUuid },
     body: body ? JSON.stringify(body) : undefined
   });
   const d = await r.json();
@@ -1571,14 +1586,8 @@ async function bsfGetChildFolders(parentFileId){
 async function bsfCreateShare(fileId, shareName) {
   // 账号密码网页登录态分享接口，按你抓包的真实请求格式构造
   if (!S.officialToken) throw new Error('请先登录123云盘账号');
-  if (!S.loginUuid) {
-    const inputUuid = prompt('创建分享需要 loginuuid。请从抓包请求头复制 loginuuid 填入：', localStorage.getItem('loginuuid') || '');
-    if (inputUuid && inputUuid.trim()) {
-      S.loginUuid = inputUuid.trim();
-      localStorage.setItem('loginuuid', S.loginUuid);
-    }
-  }
-  if (!S.loginUuid) throw new Error('缺少 loginuuid，请退出重登或手动填写');
+  S.loginUuid = S.loginUuid || getLoginUuid();
+  localStorage.setItem('loginuuid', S.loginUuid);
 
   const body = {
     driveId: 0,
@@ -1603,20 +1612,12 @@ async function bsfCreateShare(fileId, shareName) {
       'accept': '*/*',
       'accept-language': 'zh-CN',
       'app-version': '3',
-      'App-Version': '3',
       'authorization': 'Bearer ' + S.officialToken,
-      'Authorization': 'Bearer ' + S.officialToken,
       'content-type': 'application/json;charset=UTF-8',
-      'Content-Type': 'application/json;charset=UTF-8',
       'loginuuid': S.loginUuid,
-      'platform': 'web',
-      'Platform': 'web',
-      'Origin': 'https://yun.123pan.cn',
-      'Referer': 'https://yun.123pan.cn/'
+      'platform': 'web'
     },
-    body: JSON.stringify(body),
-    referrer: 'https://yun.123pan.cn/',
-    referrerPolicy: 'strict-origin-when-cross-origin'
+    body: JSON.stringify(body)
   });
 
   const text = await r.text();
