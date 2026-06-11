@@ -1609,8 +1609,12 @@ async function bsfCreateShare(fileId, shareName) {
         'Origin': OFFICIAL_API.base,
         'Referer': OFFICIAL_API.base + '/',
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
+        'Accept': '*/*',
+        'Accept-Language': 'zh-CN',
         'platform': 'web',
-        'app-version': '3'
+        'Platform': 'web',
+        'app-version': '3',
+        'App-Version': '3'
       },
       body: JSON.stringify(body)
     });
